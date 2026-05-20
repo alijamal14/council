@@ -55,6 +55,7 @@ changelog:
 # Homebrew tap — generates a Formula and pushes to alijamal14/homebrew-tap
 brews:
   - name: council
+    directory: Formula
     repository:
       owner: alijamal14
       name: homebrew-tap
@@ -75,6 +76,7 @@ brews:
 # Scoop bucket — generates a manifest and pushes to alijamal14/scoop-bucket
 scoops:
   - name: council
+    directory: bucket
     repository:
       owner: alijamal14
       name: scoop-bucket
