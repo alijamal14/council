@@ -83,7 +83,20 @@ Council does not store or manage API keys. Authentication is the responsibility 
 
 ## Installation
 
-### Prebuilt Binary (Recommended)
+### Homebrew (macOS / Linux) — Recommended
+
+```bash
+brew install alijamal14/tap/council
+```
+
+### Scoop (Windows) — Recommended
+
+```powershell
+scoop bucket add alijamal14 https://github.com/alijamal14/scoop-bucket
+scoop install council
+```
+
+### Prebuilt Binary (all platforms)
 
 **Linux / macOS:**
 ```bash
@@ -95,9 +108,10 @@ curl -fsSL https://raw.githubusercontent.com/alijamal14/council/main/scripts/ins
 powershell -c "irm https://raw.githubusercontent.com/alijamal14/council/main/scripts/install.ps1 | iex"
 ```
 
-After installation, verify it is available:
+### Go Install (if you already have Go 1.25+)
+
 ```bash
-council --version
+go install github.com/alijamal14/council@latest
 ```
 
 ### Build From Source
@@ -111,6 +125,11 @@ go build -o council .
 Optionally install the binary to your `PATH`:
 ```bash
 ./council install
+```
+
+After any installation method, verify it worked:
+```bash
+council --version
 ```
 
 ---

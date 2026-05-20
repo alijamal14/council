@@ -24,18 +24,16 @@ builds:
       - -s -w -X main.Version={{.Version}} -X main.Commit={{.Commit}} -X main.Date={{.Date}}
 
 archives:
-  - format: tar.gz
-    # this name template makes the OS and Arch compatible with the install script
+  - formats: [tar.gz]
     name_template: >-
       {{ .ProjectName }}_
       {{- .Os }}_
       {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "arm64" }}aarch64
       {{- else }}{{ .Arch }}{{ end }}
-    # use zip for windows archives
     format_overrides:
       - goos: windows
-        format: zip
+        formats: [zip]
     files:
       - LICENSE
       - README.md
@@ -45,7 +43,7 @@ checksum:
   name_template: 'checksums.txt'
 
 snapshot:
-  name_template: "{{ .Tag }}-next"
+  version_template: "{{ .Tag }}-next"
 
 changelog:
   sort: asc
@@ -53,6 +51,42 @@ changelog:
     exclude:
       - '^docs:'
       - '^test:'
+
+# Homebrew tap — generates a Formula and pushes to alijamal14/homebrew-tap
+brews:
+  - name: council
+    repository:
+      owner: alijamal14
+      name: homebrew-tap
+      token: "{{ .Env.GITHUB_TOKEN }}"
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
+    homepage: "https://github.com/alijamal14/council"
+    description: "AI Council Orchestrator — run multiple AI agent CLIs in parallel for planning & critique consensus."
+    license: "Apache-2.0"
+    skip_upload: auto
+    test: |
+      system "#{bin}/council", "--version"
+    install: |
+      bin.install "council"
+
+# Scoop bucket — generates a manifest and pushes to alijamal14/scoop-bucket
+scoops:
+  - name: council
+    repository:
+      owner: alijamal14
+      name: scoop-bucket
+      token: "{{ .Env.GITHUB_TOKEN }}"
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    commit_msg_template: "Scoop update for {{ .ProjectName }} version {{ .Tag }}"
+    homepage: "https://github.com/alijamal14/council"
+    description: "AI Council Orchestrator — run multiple AI agent CLIs in parallel for planning & critique consensus."
+    license: "Apache-2.0"
+    skip_upload: auto
 
 release:
   github:
