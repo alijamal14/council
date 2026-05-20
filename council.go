@@ -16,7 +16,12 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-const Version = "1.1.1"
+var Version = "1.1.1"
+
+var (
+	commit = "none"
+	date   = "unknown"
+)
 
 type Config struct {
 	AgentRunTimeout   int
@@ -171,7 +176,7 @@ func parseFlags() Config {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "version", "--version", "-v":
-			fmt.Printf("AI Council Orchestrator v%s\n", Version)
+			fmt.Printf("AI Council Orchestrator v%s (%s, built on %s)\n", Version, commit, date)
 			os.Exit(0)
 		case "install":
 			cfg.Subcommand = "install"
@@ -201,7 +206,7 @@ func parseFlags() Config {
 	flag.Parse()
 
 	if *versionPtr {
-		fmt.Printf("AI Council Orchestrator v%s\n", Version)
+		fmt.Printf("AI Council Orchestrator v%s (%s, built on %s)\n", Version, commit, date)
 		os.Exit(0)
 	}
 

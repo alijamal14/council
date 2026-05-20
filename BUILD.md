@@ -11,6 +11,25 @@ go build -o council .
 ./council "Your task description here"
 ```
 
+## 📦 Distribution & Releases
+
+The project uses **GoReleaser** and **GitHub Actions** to automate the creation of multi-platform binaries.
+
+### Release Workflow
+1.  **Tagging**: When a new version is ready, create and push a git tag:
+    ```bash
+    git tag -a v1.0.0 -m "Release v1.0.0"
+    git push origin v1.0.0
+    ```
+2.  **GitHub Action**: The `release` workflow (`.github/workflows/release.yml`) is triggered automatically.
+3.  **GoReleaser**: It builds binaries for Linux, macOS, and Windows (amd64/arm64), generates checksums, and publishes them to a new GitHub Release.
+
+### Local Release Testing
+To test the release process locally without publishing:
+```bash
+goreleaser release --snapshot --clean
+```
+
 ## 🛠️ Architecture Overview
 
 The orchestrator utilizes a **Bridge Pattern** to decouple the orchestration logic from the execution platform, enabling both local and future remote transports.

@@ -29,16 +29,32 @@ Before using Council, ensure you have the following:
 
 ## 🚀 Quick Start
 
-### Installation
+### 🚀 Quick Install
 
+Install the pre-built binary for your platform with a single command:
+
+**Linux / macOS**:
 ```bash
-# Clone the repository
+curl -fsSL https://raw.githubusercontent.com/alijamal14/council/main/scripts/install.sh | bash
+```
+
+**Windows (PowerShell)**:
+```powershell
+powershell -c "irm https://raw.githubusercontent.com/alijamal14/council/main/scripts/install.ps1 | iex"
+```
+
+---
+
+### Manual Installation (from source)
+
+If you prefer to build from source:
+
+1. **Clone the repository**:
 git clone https://github.com/alijamal14/council.git
 cd council
 
 # Build and install to your PATH (~/.local/bin, /usr/local/bin, etc.)
 go build -o council .
-./council install
 ```
 
 ### Basic Usage
