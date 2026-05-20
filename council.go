@@ -571,7 +571,7 @@ func delegateToRemote(ctx context.Context, cfg Config) int {
 	host := cfg.RemoteHost
 	port := "22"
 
-	// Parse user and host if provided directly like ali@192.168.1.5:22
+	// Parse user and host if provided directly like user@1.2.3.4:22
 	if strings.Contains(host, "@") {
 		parts := strings.Split(host, "@")
 		user = parts[0]
@@ -646,7 +646,7 @@ func delegateToRemote(ctx context.Context, cfg Config) int {
 
 	remoteDir := os.Getenv("COUNCIL_REMOTE_DIR")
 	if remoteDir == "" {
-		remoteDir = "~/ai" // Default for backward compatibility
+		remoteDir = "." // Default to current directory on remote
 	}
 	innerCmd := fmt.Sprintf("cd %s && council %s", remoteDir, strings.Join(args, " "))
 	remoteCmd := fmt.Sprintf("bash -l -c '%s'", strings.ReplaceAll(innerCmd, "'", "'\\''"))

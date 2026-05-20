@@ -16,6 +16,7 @@ import (
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
+	"golang.org/x/crypto/ssh/knownhosts"
 )
 
 type AgentName string
@@ -149,8 +150,6 @@ func NewSSHConfig(user, identityFile string) (*ssh.ClientConfig, error) {
 			} else {
 				fmt.Fprintf(os.Stderr, "⚠️  Failed to parse SSH Key %s: %v\n", path, err)
 			}
-		} else {
-			// fmt.Fprintf(os.Stderr, "⚠️  Failed to read SSH Key %s: %v\n", path, err)
 		}
 	}
 
@@ -158,11 +157,36 @@ func NewSSHConfig(user, identityFile string) (*ssh.ClientConfig, error) {
 		return nil, fmt.Errorf("no valid SSH auth methods found (check ssh-agent, %s, or ~/.ssh/id_rsa)", identityFile)
 	}
 
-	hostKeyCallback := ssh.InsecureIgnoreHostKey()
-	knownHosts := os.Getenv("COUNCIL_KNOWN_HOSTS")
-	if knownHosts != "" {
-		// Proper host key verification would go here if implemented
-		// For now, we keep the insecure default but warn loudly if not in unrestricted mode
+	var hostKeyCallback ssh.HostKeyCallback
+	knownHostsPath := os.Getenv("COUNCIL_KNOWN_HOSTS")
+	insecureSSH := os.Getenv("COUNCIL_SSH_INSECURE") == "1"
+
+	if knownHostsPath == "" {
+		// Default to system known_hosts
+		knownHostsPath = filepath.Join(home, ".ssh", "known_hosts")
+	} else if strings.HasPrefix(knownHostsPath, "~/") {
+		knownHostsPath = filepath.Join(home, knownHostsPath[2:])
+	}
+
+	if _, err := os.Stat(knownHostsPath); err == nil {
+		var err error
+		hostKeyCallback, err = knownhosts.New(knownHostsPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "⚠️  Failed to parse known_hosts from %s: %v\n", knownHostsPath, err)
+			if insecureSSH {
+				fmt.Fprintln(os.Stderr, "⚠️  Falling back to insecure host key verification (COUNCIL_SSH_INSECURE=1)")
+				hostKeyCallback = ssh.InsecureIgnoreHostKey()
+			} else {
+				return nil, fmt.Errorf("host key verification failed and COUNCIL_SSH_INSECURE is not set")
+			}
+		}
+	} else {
+		if insecureSSH {
+			fmt.Fprintln(os.Stderr, "⚠️  known_hosts not found; using insecure verification (COUNCIL_SSH_INSECURE=1)")
+			hostKeyCallback = ssh.InsecureIgnoreHostKey()
+		} else {
+			return nil, fmt.Errorf("known_hosts file not found at %s. Use COUNCIL_KNOWN_HOSTS or set COUNCIL_SSH_INSECURE=1 to bypass (not recommended)", knownHostsPath)
+		}
 	}
 
 	return &ssh.ClientConfig{
@@ -257,7 +281,6 @@ func discoverAgent(ctx context.Context, name AgentName, timeoutSec int) *Resolve
 	searchPaths := []string{
 		filepath.Join(home, ".local", "bin"),
 		filepath.Join(home, "bin"),
-		filepath.Join(home, "ai", "bin"),
 		"/usr/local/bin",
 		"/opt/homebrew/bin",
 	}
@@ -283,7 +306,6 @@ func discoverCursorAgent(ctx context.Context, timeoutSec int) *ResolvedAgent {
 	searchPaths := []string{
 		filepath.Join(home, ".local", "bin"),
 		filepath.Join(home, "bin"),
-		filepath.Join(home, "ai", "bin"),
 		"/usr/local/bin",
 		"/opt/homebrew/bin",
 	}

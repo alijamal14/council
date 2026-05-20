@@ -1,0 +1,19 @@
+# Council Orchestrator
+council
+council.exe
+
+# Council Runs
+council_runs/
+.council/runs/
+
+# Common OS files
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+
+# Build artifacts
+*.o
+*.a

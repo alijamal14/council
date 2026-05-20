@@ -41,7 +41,7 @@ The orchestrator resolves the repository root (to find manifests and logs) using
 1.  **CLI Flag**: `--repo <path>`
 2.  **Environment Variable**: `COUNCIL_REPO_ROOT`
 3.  **Git Root**: Automated walk-up from the current working directory.
-4.  **Fallback**: `~/ai` (via native system home detection).
+4.  **Fallback**: Current working directory (CWD).
 
 ## 💻 Multi-Platform Support
 

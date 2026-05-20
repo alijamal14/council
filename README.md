@@ -75,7 +75,9 @@ Council can be customized via environment variables or a `.council` directory:
 | Variable | Description |
 |----------|-------------|
 | `COUNCIL_REPO_ROOT` | Manual override for the project root. |
-| `COUNCIL_REMOTE_HOST` | Default host for SSH delegation (default: `intelserver`). |
+| `COUNCIL_REMOTE_HOST` | Default host for SSH delegation (default: none). |
+| `COUNCIL_KNOWN_HOSTS` | Custom path to known_hosts file (default: `~/.ssh/known_hosts`). |
+| `COUNCIL_SSH_INSECURE` | Set to `1` to bypass host key verification (not recommended). |
 | `COUNCIL_DOMAINS_DIR` | Path to your custom domain manifests. |
 | `COUNCIL_<AGENT>_MODEL` | Pin specific models (e.g., `COUNCIL_GEMINI_MODEL=gemini-2.0-pro-exp-02-05`). |
 
