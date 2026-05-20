@@ -148,9 +148,20 @@ go test ./...
 
 ---
 
+## 📚 Documentation
+
+| Document | Description |
+|----------|-------------|
+| [README.md](README.md) | This file — Quick Start, CLI Reference, Configuration |
+| [BUILD.md](BUILD.md) | Architecture deep-dive, agent roster, release workflow, multi-platform support |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute, dev environment, coding standards, security guidelines |
+| [PROGRESS.md](PROGRESS.md) | Refactoring history and completed milestones |
+
+---
+
 ## 📄 License
 
-Distributed under the **Apache License 2.0**. See `LICENSE` for more information.
+Distributed under the **Apache License 2.0**. See [LICENSE](LICENSE) for more information.
 
 ---
 
