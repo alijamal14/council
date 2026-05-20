@@ -193,7 +193,7 @@ func parseFlags() Config {
 	timeoutPtr := flag.Int("timeout", 300, "Per-agent run timeout (plan/critique) in seconds")
 	checkTimeoutPtr := flag.Int("check-timeout", 8, "Agent binary discovery probe timeout in seconds")
 	pingTimeoutPtr := flag.Int("ping-timeout", 45, "Pre-flight ping timeout per agent (seconds)")
-	agentsPtr := flag.String("agents", "", "Comma-separated list of agents (gemini,claude,codex,copilot,cursor)")
+	agentsPtr := flag.String("agents", "", "Comma-separated list of agents (antigravity,gemini,claude,codex,copilot,cursor)")
 	verbosePtr := flag.Bool("verbose", true, "Verbose output")
 	continuePtr := flag.String("continue", "", "Session directory to continue")
 	repoPtr := flag.String("repo", "", "Repository root (explicit override)")

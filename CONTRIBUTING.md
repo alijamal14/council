@@ -36,7 +36,7 @@ go test ./...
 
 - **No Hardcoded Secrets**: Never commit API keys, private hostnames, or local paths.
 - **Restricted by Default**: All new agent flags should default to "Restricted Mode". Bypasses for approvals or sandboxing must be explicitly guarded by the `--unrestricted` flag.
-- **Path Neutrality**: Do not assume specific monorepo structures. Use the `WorkspaceRoot` logic to resolve relative paths.
+- **Path Neutrality**: Do not assume fixed directory layouts. Use `resolveRepoRoot`, `COUNCIL_REPO_ROOT`, or the `--repo` flag to resolve relative paths.
 
 ---
 

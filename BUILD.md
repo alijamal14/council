@@ -8,6 +8,9 @@ To build and run the Council locally:
 
 ```bash
 go build -o council .
+./council install    # (Optional) Installs to your PATH
+./council doctor     # Verifies agents and connectivity
+./council --version  # Checks current version
 ./council "Your task description here"
 ```
 
@@ -43,15 +46,15 @@ All are optional at runtime; unavailable CLIs are skipped after discovery/ping:
 | Gemini | `gemini` | |
 | Codex | `codex` | `exec` subcommand |
 | Claude | `claude` | |
-| Copilot | `copilot` | Surrogate failover for Gemini/Claude/Codex on failure |
+| Copilot | `copilot` | |
 | Cursor | `cursor-agent`, then `agent` | Cursor Agent CLI ([docs](https://cursor.com/docs/cli/overview)) |
 | Antigravity | `agy` | The 6th seat (High-Fidelity Agentic CLI) |
 
-**Default invocation** is unrestricted/headless-capable argv for each CLI (`councilSpawnArgs` in `agent.go`); use only where the workspace trust model permits it.
+**Restricted by default**. Unrestricted argv for each CLI (`councilSpawnArgs` in `agent.go`) is only used when you pass `--unrestricted` (or `-y` / `--yolo`).
 
 ### Key Components
 *   **`council.go`**: Primary entry point. Handles CLI flag parsing, repository root resolution, and the high-level planning/critique session lifecycle.
-*   **`agent.go`**: Core orchestration engine. Manages parallel execution of AI agent CLIs, process-group termination (preventing orphan processes), and cross-platform binary discovery.
+*   **`agent.go`**: Core orchestration engine. Manages parallel execution of AI agent CLIs, process-group termination (Unix) or Job Objects (Windows) to prevent orphan processes, and cross-platform binary discovery.
 *   **`domain.go`**: Context Routing engine. Uses native YAML parsing (`gopkg.in/yaml.v3`) to resolve project-specific domains from `_registry.template.yml` without external dependencies like `yq`.
 *   **`run.go`**: Persistence and Audit layer. Manages session directory creation, structured logging (Markdown and JSONL), and Continue-Mode history aggregation.
 
