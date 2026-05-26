@@ -5,7 +5,7 @@ Thank you for your interest in contributing to the AI Council Orchestrator! This
 ## 🛠️ Development Environment
 
 ### Prerequisites
-- **Go**: 1.25+
+- **Go**: 1.21+
 - **Agent CLIs**: (Optional for unit tests) Gemini, Claude, Codex, etc.
 
 ### Building
