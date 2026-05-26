@@ -127,13 +127,10 @@ func (l *AuditLogger) Close() error {
 	return err
 }
 
-// createRunDir creates a new run directory with timestamp-based name
-func createRunDir(councilRunsDir string) (string, error) {
-	// Rotate old runs before creating a new one (keep 50)
-	if os.Getenv("COUNCIL_NO_ROTATE") != "1" {
-		rotateRunDirs(councilRunsDir, 50)
-	}
+const defaultCouncilRunRetention = 200
 
+// createRunDir creates a new run directory with timestamp-based name.
+func createRunDir(councilRunsDir string) (string, error) {
 	timestamp := time.Now().Format("20060102_150405")
 	// Create temp directory - we'll use a numbered approach since Go's TempDir
 	// may not handle the pattern the same way
@@ -142,6 +139,10 @@ func createRunDir(councilRunsDir string) (string, error) {
 		runDir := filepath.Join(councilRunsDir, "run_"+timestamp+"_"+suffix)
 		err := os.Mkdir(runDir, 0755)
 		if err == nil {
+			// Rotate after creating the new run so retention is exact and includes this run.
+			if os.Getenv("COUNCIL_NO_ROTATE") != "1" {
+				rotateRunDirs(councilRunsDir, councilRunRetention())
+			}
 			return runDir, nil
 		}
 		if !os.IsExist(err) {
@@ -151,33 +152,63 @@ func createRunDir(councilRunsDir string) (string, error) {
 	return "", fmt.Errorf("could not create unique run directory")
 }
 
-// rotateRunDirs deletes old run directories to save space
+func councilRunRetention() int {
+	value := strings.TrimSpace(os.Getenv("COUNCIL_KEEP_RUNS"))
+	if value == "" {
+		return defaultCouncilRunRetention
+	}
+	keep, err := strconv.Atoi(value)
+	if err != nil || keep < 1 {
+		return defaultCouncilRunRetention
+	}
+	return keep
+}
+
+// rotateRunDirs deletes old run directories to save space.
 func rotateRunDirs(dir string, keep int) {
+	if keep < 1 {
+		return
+	}
+
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return
 	}
 
-	var runs []os.DirEntry
+	type runEntry struct {
+		name    string
+		modTime time.Time
+	}
+
+	var runs []runEntry
 	for _, entry := range entries {
-		if entry.IsDir() && strings.HasPrefix(entry.Name(), "run_") {
-			runs = append(runs, entry)
+		if !entry.IsDir() || !strings.HasPrefix(entry.Name(), "run_") {
+			continue
 		}
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		runs = append(runs, runEntry{name: entry.Name(), modTime: info.ModTime()})
 	}
 
 	if len(runs) <= keep {
 		return
 	}
 
-	// Sort by name (which contains timestamp)
+	// Sort by modification time, with name as a deterministic tie-breaker. This handles
+	// both normal timestamped run dirs and manually named run_* directories.
 	sort.Slice(runs, func(i, j int) bool {
-		return runs[i].Name() < runs[j].Name()
+		if runs[i].modTime.Equal(runs[j].modTime) {
+			return runs[i].name < runs[j].name
+		}
+		return runs[i].modTime.Before(runs[j].modTime)
 	})
 
-	// Delete oldest
+	// Delete oldest.
 	toDelete := len(runs) - keep
 	for i := 0; i < toDelete; i++ {
-		os.RemoveAll(filepath.Join(dir, runs[i].Name()))
+		os.RemoveAll(filepath.Join(dir, runs[i].name))
 	}
 }
 

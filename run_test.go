@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,6 +29,84 @@ func TestCreateRunDir(t *testing.T) {
 	// Verify directory exists
 	if _, err := os.Stat(runDir); err != nil {
 		t.Errorf("createRunDir() created directory doesn't exist: %v", err)
+	}
+}
+
+func TestCreateRunDirRotatesAfterCreatingRunWithDefaultRetention(t *testing.T) {
+	tmpdir := t.TempDir()
+	councilRunsDir := filepath.Join(tmpdir, "council_runs")
+	if err := os.MkdirAll(councilRunsDir, 0755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	t.Setenv("COUNCIL_NO_ROTATE", "")
+	t.Setenv("COUNCIL_KEEP_RUNS", "")
+
+	for i := 0; i < 201; i++ {
+		name := filepath.Join(councilRunsDir, "run_20250101_000000_"+fmt.Sprintf("%06d", i))
+		if err := os.Mkdir(name, 0755); err != nil {
+			t.Fatalf("Mkdir(%s) error = %v", name, err)
+		}
+	}
+
+	runDir, err := createRunDir(councilRunsDir)
+	if err != nil {
+		t.Fatalf("createRunDir() error = %v", err)
+	}
+	if _, err := os.Stat(runDir); err != nil {
+		t.Fatalf("newly created run dir should remain after rotation: %v", err)
+	}
+
+	entries, err := os.ReadDir(councilRunsDir)
+	if err != nil {
+		t.Fatalf("ReadDir() error = %v", err)
+	}
+	count := 0
+	for _, entry := range entries {
+		if entry.IsDir() && strings.HasPrefix(entry.Name(), "run_") {
+			count++
+		}
+	}
+	if count != 200 {
+		t.Fatalf("createRunDir() should retain exactly 200 run dirs including the new run, got %d", count)
+	}
+}
+
+func TestCreateRunDirHonorsKeepRunsEnv(t *testing.T) {
+	tmpdir := t.TempDir()
+	councilRunsDir := filepath.Join(tmpdir, "council_runs")
+	if err := os.MkdirAll(councilRunsDir, 0755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	t.Setenv("COUNCIL_NO_ROTATE", "")
+	t.Setenv("COUNCIL_KEEP_RUNS", "3")
+
+	for i := 0; i < 5; i++ {
+		name := filepath.Join(councilRunsDir, "run_20250101_000000_"+fmt.Sprintf("%06d", i))
+		if err := os.Mkdir(name, 0755); err != nil {
+			t.Fatalf("Mkdir(%s) error = %v", name, err)
+		}
+	}
+
+	runDir, err := createRunDir(councilRunsDir)
+	if err != nil {
+		t.Fatalf("createRunDir() error = %v", err)
+	}
+	if _, err := os.Stat(runDir); err != nil {
+		t.Fatalf("newly created run dir should remain after rotation: %v", err)
+	}
+
+	entries, err := os.ReadDir(councilRunsDir)
+	if err != nil {
+		t.Fatalf("ReadDir() error = %v", err)
+	}
+	count := 0
+	for _, entry := range entries {
+		if entry.IsDir() && strings.HasPrefix(entry.Name(), "run_") {
+			count++
+		}
+	}
+	if count != 3 {
+		t.Fatalf("COUNCIL_KEEP_RUNS=3 should retain exactly 3 run dirs including the new run, got %d", count)
 	}
 }
 
@@ -241,4 +320,3 @@ func TestAuditLoggerConcurrent(t *testing.T) {
 		t.Errorf("Expected at least 5 audit lines, got %d", auditLines)
 	}
 }
-

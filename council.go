@@ -16,7 +16,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-var Version = "1.1.1"
+var Version = "1.1.2"
 
 var (
 	commit = "none"

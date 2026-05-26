@@ -188,6 +188,8 @@ Each run directory contains:
 - A `brief.txt` summary of the task.
 - Structured `audit.jsonl` logs for programmatic inspection.
 
+Council keeps the newest **200** `run_*` directories by default. Rotation happens after a new run is created, so the retained count includes the latest run. Use `COUNCIL_KEEP_RUNS=<n>` to override the count, or `COUNCIL_NO_ROTATE=1` to disable run-directory deletion. Global audit files such as `council_audit.md` and `council_audit.jsonl` are not truncated by run-directory rotation.
+
 ---
 
 ## CLI Reference
@@ -265,7 +267,8 @@ All configuration is done through environment variables:
 | `COUNCIL_SSH_INSECURE` | Set to `1` to bypass SSH host key verification. |
 | `COUNCIL_DOMAINS_DIR` | Path to custom domain context manifests. |
 | `COUNCIL_<AGENT>_MODEL` | Pin a specific model for an agent (e.g., `COUNCIL_GEMINI_MODEL=gemini-2.0-pro`). |
-| `COUNCIL_NO_ROTATE` | Set to `1` to disable automatic pruning of old run directories (default: keeps 50). |
+| `COUNCIL_KEEP_RUNS` | Number of newest run directories to retain. Invalid values and values below `1` fall back to `200`. |
+| `COUNCIL_NO_ROTATE` | Set to `1` to disable automatic pruning of old run directories. |
 
 ---
 
