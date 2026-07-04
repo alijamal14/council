@@ -161,18 +161,24 @@ func TestPingAgentsParallelTriggersCopilotFailover(t *testing.T) {
 	t.Cleanup(func() { _ = os.Setenv("PATH", oldPath) })
 	_ = os.Setenv("PATH", tmpdir)
 
-	createMockAgent(t, tmpdir, "gemini", `
+	geminiScript := `
 if [ "$1" = "-v" ] || [ "$1" = "--version" ] || [ "$1" = "--help" ]; then
   exit 0
 fi
 echo "mock ping failure"
-exit 1`)
-	createMockAgent(t, tmpdir, "copilot", `
+exit 1`
+	copilotScript := `
 if [ "$1" = "-v" ] || [ "$1" = "--version" ] || [ "$1" = "--help" ]; then
   exit 0
 fi
 echo "OK"
-exit 0`)
+exit 0`
+	if runtime.GOOS == "windows" {
+		geminiScript = "echo mock ping failure\nexit /b 1"
+		copilotScript = "echo OK\nexit /b 0"
+	}
+	geminiPath := createMockAgent(t, tmpdir, "gemini", geminiScript)
+	copilotPath := createMockAgent(t, tmpdir, "copilot", copilotScript)
 
 	log, err := newAuditLogger(
 		"test-ping",
@@ -185,8 +191,8 @@ exit 0`)
 	defer log.Close()
 
 	healthy := pingAgentsParallel(context.Background(), AgentSet{
-		AgentGemini:  {Name: AgentGemini, Path: filepath.Join(tmpdir, "gemini"), RunnerType: "local"},
-		AgentCopilot: {Name: AgentCopilot, Path: filepath.Join(tmpdir, "copilot"), RunnerType: "local"},
+		AgentGemini:  {Name: AgentGemini, Path: geminiPath, RunnerType: "local"},
+		AgentCopilot: {Name: AgentCopilot, Path: copilotPath, RunnerType: "local"},
 	}, 25, Config{}, log)
 
 	_, ok := healthy[AgentGemini]
@@ -211,13 +217,13 @@ func TestRunAgentFallsBackToCopilotAfterFailure(t *testing.T) {
 	t.Cleanup(func() { _ = os.Setenv("PATH", oldPath) })
 	_ = os.Setenv("PATH", tmpdir)
 
-	createMockAgent(t, tmpdir, "gemini", `
+	geminiScript := `
 if [ "$1" = "-v" ] || [ "$1" = "--version" ] || [ "$1" = "--help" ]; then
   exit 0
 fi
 echo "Error executing tool: forced primary failure"
-exit 1`)
-	createMockAgent(t, tmpdir, "copilot", `
+exit 1`
+	copilotScript := `
 if [ "$1" = "-v" ] || [ "$1" = "--version" ] || [ "$1" = "--help" ]; then
   exit 0
 fi
@@ -232,7 +238,15 @@ if [ -n "$has_message" ] && [ -n "$has_model" ]; then
   exit 0
 fi
 echo "copilot normal output"
-exit 0`)
+exit 0`
+	if runtime.GOOS == "windows" {
+		geminiScript = "echo Error executing tool: forced primary failure\nexit /b 1"
+		// Fallback is disabled, so the copilot stub is never invoked with
+		// fallback args; a plain success response is sufficient on Windows.
+		copilotScript = "echo copilot normal output\nexit /b 0"
+	}
+	geminiPath := createMockAgent(t, tmpdir, "gemini", geminiScript)
+	copilotPath := createMockAgent(t, tmpdir, "copilot", copilotScript)
 
 	log, err := newAuditLogger(
 		"test-run",
@@ -247,8 +261,8 @@ exit 0`)
 	result := runAgent(
 		context.Background(),
 		AgentGemini,
-		&ResolvedAgent{Name: AgentGemini, Path: filepath.Join(tmpdir, "gemini"), RunnerType: "local"},
-		&ResolvedAgent{Name: AgentCopilot, Path: filepath.Join(tmpdir, "copilot"), RunnerType: "local"},
+		&ResolvedAgent{Name: AgentGemini, Path: geminiPath, RunnerType: "local"},
+		&ResolvedAgent{Name: AgentCopilot, Path: copilotPath, RunnerType: "local"},
 		"test prompt",
 		filepath.Join(tmpdir, "plan.gemini.txt"),
 		Config{AgentRunTimeout: 5},
@@ -316,14 +330,17 @@ func TestResolveRepoRootUsesExplicitExistingRepo(t *testing.T) {
 	}
 }
 
-func createMockAgent(t *testing.T, dir, name, script string) {
+// createMockAgent writes an executable stub and returns its path (.bat on Windows).
+// The script must be POSIX sh on Unix and batch syntax on Windows; callers that
+// exercise both platforms should switch script content on runtime.GOOS.
+func createMockAgent(t *testing.T, dir, name, script string) string {
 	t.Helper()
 
 	var exePath string
 	var content string
 	if runtime.GOOS == "windows" {
 		exePath = filepath.Join(dir, name+".bat")
-		content = "@echo off\n" + script + "\n"
+		content = "@echo off\r\n" + strings.ReplaceAll(script, "\n", "\r\n") + "\r\n"
 	} else {
 		exePath = filepath.Join(dir, name)
 		content = "#!/bin/sh\n" + script + "\n"
@@ -332,6 +349,7 @@ func createMockAgent(t *testing.T, dir, name, script string) {
 	if err := os.WriteFile(exePath, []byte(content), 0755); err != nil {
 		t.Fatalf("createMockAgent() error = %v", err)
 	}
+	return exePath
 }
 
 func captureStdout(t *testing.T, fn func()) string {
