@@ -19,9 +19,9 @@ type DomainManifest struct {
 
 type Registry struct {
 	Domains map[string]struct {
-		Description string `yaml:"description"`
+		Description string   `yaml:"description"`
 		Keywords    []string `yaml:"keywords"`
-		Manifest    string `yaml:"manifest"`
+		Manifest    string   `yaml:"manifest"`
 	} `yaml:"domains"`
 }
 
@@ -111,7 +111,7 @@ func loadDomainManifest(domainsDir, domainName string) string {
 	if len(manifest.Keywords) > 0 {
 		sb.WriteString(fmt.Sprintf("Keywords: %s\n", strings.Join(manifest.Keywords, ", ")))
 	}
-	
+
 	// Add some raw lines from the file but skip the big glob lists
 	lines := strings.Split(string(data), "\n")
 	count := 0

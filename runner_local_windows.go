@@ -12,14 +12,14 @@ import (
 )
 
 var (
-	kernel32                   = syscall.NewLazyDLL("kernel32.dll")
-	procCreateJobObject        = kernel32.NewProc("CreateJobObjectW")
-	procSetInformationJobObject = kernel32.NewProc("SetInformationJobObject")
+	kernel32                     = syscall.NewLazyDLL("kernel32.dll")
+	procCreateJobObject          = kernel32.NewProc("CreateJobObjectW")
+	procSetInformationJobObject  = kernel32.NewProc("SetInformationJobObject")
 	procAssignProcessToJobObject = kernel32.NewProc("AssignProcessToJobObject")
 )
 
 const (
-	JobObjectExtendedLimitInformation = 9
+	JobObjectExtendedLimitInformation  = 9
 	JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x00002000
 	// PROCESS_SET_QUOTA and PROCESS_TERMINATE are needed for AssignProcessToJobObject
 	PROCESS_SET_QUOTA = 0x0100
@@ -27,9 +27,9 @@ const (
 )
 
 type JOBOBJECT_BASIC_LIMIT_INFORMATION struct {
-	CheckSum                       int64
-	LimitFlags                     uint32
-	_                              [4]byte // Padding
+	CheckSum   int64
+	LimitFlags uint32
+	_          [4]byte // Padding
 }
 
 type JOBOBJECT_EXTENDED_LIMIT_INFORMATION struct {
@@ -47,10 +47,10 @@ func (r *LocalRunner) Run(ctx context.Context, name string, args []string, stdin
 	hJob, _, _ := procCreateJobObject.Call(0, 0)
 	if hJob != 0 {
 		defer syscall.CloseHandle(syscall.Handle(hJob))
-		
+
 		info := JOBOBJECT_EXTENDED_LIMIT_INFORMATION{}
 		info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
-		
+
 		procSetInformationJobObject.Call(
 			hJob,
 			JobObjectExtendedLimitInformation,

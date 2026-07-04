@@ -7,7 +7,7 @@
 
 **Get a second (and third, and fourth) opinion from your AI coding tools — in one command.**
 
-AI Council is a free, open-source, cross-platform CLI that runs multiple AI agent command-line tools — **Claude Code, Gemini CLI, OpenAI Codex, GitHub Copilot, Cursor, Antigravity** — in parallel on the same task, collects their independent plans, runs a critique pass (including a Devil's Advocate), and saves the full multi-agent session as auditable output. Works on **macOS, Linux, and Windows**.
+AI Council is a free, open-source, cross-platform CLI that runs multiple AI agent command-line tools — **Claude Code, Gemini CLI, OpenAI Codex, GitHub Copilot, Cursor, Antigravity, Aider, OpenCode, Qwen Code, Goose, Amp, and Factory Droid** — in parallel on the same task, collects their independent plans, runs a critique pass (including a Devil's Advocate), and saves the full multi-agent session as auditable output. Works on **macOS, Linux, and Windows**.
 
 It is designed for developers — and for AI coding agents themselves — who want a repeatable way to compare model perspectives on complex engineering tasks.
 
@@ -75,16 +75,26 @@ This makes Council useful for:
 
 ## Supported Agents
 
-Council can use the following CLIs when they are installed and authenticated. Unavailable agents are skipped during discovery — you do not need all of them installed.
+Council can use the following 12 CLIs when they are installed and authenticated. Unavailable agents are skipped during discovery — you do not need all of them installed; **one is enough to start**.
 
-| Agent | Executable |
-|-------|------------|
-| Gemini | `gemini` |
-| Claude | `claude` |
-| Codex | `codex` |
-| Copilot | `copilot` |
-| Cursor | `cursor-agent` or `agent` |
-| Antigravity | `agy` |
+| Agent | Executable | Vendor | Install |
+|-------|------------|--------|---------|
+| Claude Code | `claude` | Anthropic | `npm i -g @anthropic-ai/claude-code` |
+| Gemini CLI | `gemini` | Google | `npm i -g @google/gemini-cli` |
+| Codex | `codex` | OpenAI | `npm i -g @openai/codex` |
+| Copilot CLI | `copilot` | GitHub | `npm i -g @github/copilot` |
+| Cursor | `cursor-agent` or `agent` | Cursor | [cursor.com/cli](https://cursor.com/cli) |
+| Antigravity | `agy` | Google | [antigravity.google](https://antigravity.google) |
+| Aider | `aider` | open source | `pip install aider-install && aider-install` |
+| OpenCode | `opencode` | open source | `npm i -g opencode-ai` |
+| Qwen Code | `qwen` | Alibaba (open source) | `npm i -g @qwen-code/qwen-code` |
+| Goose | `goose` | Block (open source) | [goose install docs](https://block.github.io/goose/docs/getting-started/installation) |
+| Amp | `amp` | Sourcegraph | `npm i -g @sourcegraph/amp` |
+| Droid | `droid` | Factory | [docs.factory.ai/cli](https://docs.factory.ai/cli) |
+
+Run `council setup` to see which are missing on your machine, or `council setup --apply` to install every agent that has a package-manager installer.
+
+Notes on how Council drives the newer agents: Aider runs in **ask mode** (analysis only, no file edits), Droid runs at its default **read-focused autonomy** unless you pass `--unrestricted`, and Qwen Code uses the same headless surface as Gemini CLI (it is a fork).
 
 ---
 
@@ -164,7 +174,38 @@ council --version
 council doctor
 ```
 
-The `doctor` command checks all supported agent CLIs for availability and probes SSH connectivity if configured. Run this before your first real session, and after installing or updating any agent tool.
+The `doctor` command checks all supported agent CLIs for availability **and authentication state**, and probes SSH connectivity if configured. Run this before your first real session, and after installing or updating any agent tool.
+
+### Agent Inventory as Data (`doctor --json`)
+
+Scripts, CI jobs, and AI agents can consume the inventory programmatically:
+
+```bash
+council doctor --json          # fast: install + best-effort auth detection
+council doctor --json --ping   # definitive: sends one tiny prompt through each installed CLI
+```
+
+```json
+{
+  "council_version": "1.2.0",
+  "platform": "linux/amd64",
+  "totals": { "supported": 12, "installed": 4, "authenticated": 3, "login_required": 1, "unknown": 0 },
+  "agents": [
+    {
+      "name": "Claude", "executable": "claude", "installed": true,
+      "path": "/usr/local/bin/claude", "auth": "yes", "auth_method": "ping",
+      "login_hint": "run `claude` once and complete the login flow",
+      "limits_url": "https://docs.claude.com/en/docs/claude-code/costs",
+      "limits_hint": "subscription plans use rolling usage windows; run /status inside claude to see remaining capacity",
+      "model_override_env": "COUNCIL_CLAUDE_MODEL"
+    }
+  ]
+}
+```
+
+- `auth` is `yes`, `no`, `likely` (credentials found on disk/env), or `unknown`. Only `--ping` gives a definitive answer, because most vendor CLIs expose no offline auth query.
+- `limits_url` / `limits_hint` tell you (or your orchestrating AI) where each vendor documents plan quotas — useful for deciding whether the council can afford another round.
+- Exit code is `1` when zero agents are installed, so the command doubles as a CI gate.
 
 ---
 
@@ -221,7 +262,11 @@ Council keeps the newest **200** `run_*` directories by default. Rotation happen
 | Command / Flag | Description | Default |
 |----------------|-------------|---------|
 | `council install` | Install the Council binary to your `PATH`. | |
-| `council doctor` | Check agent CLI discovery and connectivity. | |
+| `council doctor` | Check agent CLI discovery, auth state, and connectivity. | |
+| `council doctor --json` | Machine-readable agent inventory (installed / authenticated / login required / limits). | |
+| `council doctor --ping` | Verify auth definitively by sending one tiny prompt per installed agent. | |
+| `council setup` | List missing agent CLIs with install commands. | |
+| `council setup --apply` | Install missing agents that have package-manager installers (npm/pip). | |
 | `--version`, `-v` | Print version information. | |
 | `--agents` | Comma-separated agents to run (`antigravity`, `gemini`, `claude`, `codex`, `copilot`, `cursor`). | All discovered |
 | `--timeout` | Per-agent run timeout in seconds. | `300` |
@@ -290,7 +335,9 @@ All configuration is done through environment variables:
 | `COUNCIL_KNOWN_HOSTS` | Path to a custom `known_hosts` file. Default: `~/.ssh/known_hosts` |
 | `COUNCIL_SSH_INSECURE` | Set to `1` to bypass SSH host key verification. |
 | `COUNCIL_DOMAINS_DIR` | Path to custom domain context manifests. |
-| `COUNCIL_<AGENT>_MODEL` | Pin a specific model for an agent (e.g., `COUNCIL_GEMINI_MODEL=gemini-2.0-pro`). |
+| `COUNCIL_CONTEXT_CMD` | Optional RAG hook: a command run with the task appended as final argument; its stdout (up to 32 KB) is injected into every agent's context. Example: `COUNCIL_CONTEXT_CMD="graphify query"`. |
+| `COUNCIL_<AGENT>_MODEL` | Pin a specific model for an agent (e.g., `COUNCIL_GEMINI_MODEL=gemini-2.0-pro`). Supported for all agents except Amp, which selects models itself. |
+| `COUNCIL_UNRESTRICTED` | Set to `1` to default to unrestricted mode (equivalent to passing `--yolo` on every run) — intended for dedicated always-on runners and CI. |
 | `COUNCIL_KEEP_RUNS` | Number of newest run directories to retain. Invalid values and values below `1` fall back to `200`. |
 | `COUNCIL_NO_ROTATE` | Set to `1` to disable automatic pruning of old run directories. |
 
@@ -345,7 +392,11 @@ background, then poll `council_runs/` for plan.*.txt and critique.*.txt results.
 
 ### What is AI Council?
 
-AI Council is an open-source command-line tool that orchestrates multiple AI coding assistants (Claude, Gemini, Codex, Copilot, Cursor, Antigravity) in parallel on one task, then has them critique each other's plans. Think of it as a design-review meeting for AI models, with a written record.
+AI Council is an open-source command-line tool that orchestrates multiple AI coding assistants (Claude, Gemini, Codex, Copilot, Cursor, Antigravity, Aider, OpenCode, Qwen Code, Goose, Amp, Droid) in parallel on one task, then has them critique each other's plans. Think of it as a design-review meeting for AI models, with a written record.
+
+### How do I check which AI agents are installed and logged in?
+
+Run `council doctor` for a human-readable inventory or `council doctor --json` for machine-readable output with totals: how many agents are supported, installed, authenticated, and how many still need login. Add `--ping` for a definitive auth check (it sends one tiny prompt through each installed CLI). Each agent's entry also carries `limits_url` and `limits_hint` so you can check your remaining vendor quota before running a large council session.
 
 ### Is AI Council free?
 

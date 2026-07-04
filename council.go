@@ -17,7 +17,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-var Version = "1.1.2"
+var Version = "1.2.0"
 
 var (
 	commit = "none"
@@ -35,7 +35,10 @@ type Config struct {
 	ContinueFeedback  string
 	Task              string
 	RemoteHost        string
-	Subcommand        string // "install", "doctor", or "" (default)
+	Subcommand        string // "install", "doctor", "setup", or "" (default)
+	DoctorJSON        bool   // doctor: emit machine-readable JSON
+	DoctorPing        bool   // doctor: verify auth with a real (tiny) prompt per agent
+	SetupApply        bool   // setup: actually run install commands
 
 	// Derived paths
 	RepoRoot       string
@@ -52,6 +55,11 @@ type Config struct {
 	CopilotModel     string
 	CursorModel      string
 	AntigravityModel string
+	AiderModel       string
+	OpenCodeModel    string
+	QwenModel        string
+	GooseModel       string
+	DroidModel       string
 	Unrestricted     bool
 }
 
@@ -187,6 +195,22 @@ func parseFlags() Config {
 			// Mirrors defaults when normal flag.Parse path is skipped
 			cfg.AgentRunTimeout = 300
 			cfg.PingTimeout = 45
+			for _, arg := range os.Args[2:] {
+				switch arg {
+				case "--json":
+					cfg.DoctorJSON = true
+				case "--ping":
+					cfg.DoctorPing = true
+				}
+			}
+			return cfg
+		case "setup":
+			cfg.Subcommand = "setup"
+			for _, arg := range os.Args[2:] {
+				if arg == "--apply" {
+					cfg.SetupApply = true
+				}
+			}
 			return cfg
 		}
 	}
@@ -194,7 +218,7 @@ func parseFlags() Config {
 	timeoutPtr := flag.Int("timeout", 300, "Per-agent run timeout (plan/critique) in seconds")
 	checkTimeoutPtr := flag.Int("check-timeout", 8, "Agent binary discovery probe timeout in seconds")
 	pingTimeoutPtr := flag.Int("ping-timeout", 45, "Pre-flight ping timeout per agent (seconds)")
-	agentsPtr := flag.String("agents", "", "Comma-separated list of agents (antigravity,gemini,claude,codex,copilot,cursor)")
+	agentsPtr := flag.String("agents", "", "Comma-separated list of agents (gemini,claude,codex,copilot,cursor,antigravity,aider,opencode,qwen,goose,amp,droid)")
 	verbosePtr := flag.Bool("verbose", true, "Verbose output")
 	continuePtr := flag.String("continue", "", "Session directory to continue")
 	repoPtr := flag.String("repo", "", "Repository root (explicit override)")
@@ -216,7 +240,9 @@ func parseFlags() Config {
 	cfg.PingTimeout = *pingTimeoutPtr
 	cfg.Verbose = *verbosePtr
 	cfg.RemoteHost = *remotePtr
-	cfg.Unrestricted = *unrestrictedPtr || *yoloPtr || *yShortPtr
+	// COUNCIL_UNRESTRICTED=1 lets always-on servers and CI default to headless
+	// auto-approval without editing every invocation.
+	cfg.Unrestricted = *unrestrictedPtr || *yoloPtr || *yShortPtr || os.Getenv("COUNCIL_UNRESTRICTED") == "1"
 
 	if *repoPtr != "" {
 		cfg.RepoRoot = *repoPtr
@@ -247,6 +273,11 @@ func parseFlags() Config {
 	cfg.CopilotModel = os.Getenv("COUNCIL_COPILOT_MODEL")
 	cfg.CursorModel = os.Getenv("COUNCIL_CURSOR_MODEL")
 	cfg.AntigravityModel = os.Getenv("COUNCIL_ANTIGRAVITY_MODEL")
+	cfg.AiderModel = os.Getenv("COUNCIL_AIDER_MODEL")
+	cfg.OpenCodeModel = os.Getenv("COUNCIL_OPENCODE_MODEL")
+	cfg.QwenModel = os.Getenv("COUNCIL_QWEN_MODEL")
+	cfg.GooseModel = os.Getenv("COUNCIL_GOOSE_MODEL")
+	cfg.DroidModel = os.Getenv("COUNCIL_DROID_MODEL")
 
 	return cfg
 }
@@ -337,6 +368,8 @@ func run(ctx context.Context, cfg Config) int {
 		return handleInstall(cfg)
 	case "doctor":
 		return handleDoctor(ctx, cfg)
+	case "setup":
+		return handleSetup(ctx, cfg)
 	}
 
 	os.MkdirAll(cfg.CouncilRunsDir, 0755)
@@ -447,6 +480,12 @@ func run(ctx context.Context, cfg Config) int {
 		}
 
 		taskContext = "TASK: " + cfg.Task + "\n" + domainContext
+
+		// Optional RAG hook: pipe the task through an external retrieval command
+		// (e.g. COUNCIL_CONTEXT_CMD="graphify query") and inject its output.
+		if retrieved := retrieveExternalContext(sigCtx, cfg.Task, cfg.Verbose); retrieved != "" {
+			taskContext += "\nRETRIEVED CONTEXT (from " + os.Getenv("COUNCIL_CONTEXT_CMD") + "):\n" + retrieved + "\n"
+		}
 		promptTask = cfg.Task
 
 		fmt.Println("=== 🤖 CLI AI Council Convening ===")
@@ -572,6 +611,41 @@ func run(ctx context.Context, cfg Config) int {
 		return 1
 	}
 	return 0
+}
+
+// retrieveExternalContext runs the optional COUNCIL_CONTEXT_CMD retrieval hook
+// with the task appended as the final argument and returns its stdout (capped).
+// This lets any RAG or code-graph CLI (graphify, rg wrappers, vector search...)
+// enrich the prompt every agent receives. Empty when unset or on failure.
+func retrieveExternalContext(ctx context.Context, task string, verbose bool) string {
+	raw := strings.TrimSpace(os.Getenv("COUNCIL_CONTEXT_CMD"))
+	if raw == "" {
+		return ""
+	}
+	parts := strings.Fields(raw)
+	args := append(parts[1:], task)
+
+	hookCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(hookCtx, parts[0], args...)
+	out, err := cmd.Output()
+	if err != nil {
+		if verbose {
+			fmt.Fprintf(os.Stderr, "ℹ️  Context hook skipped (%s failed: %v)\n", parts[0], err)
+		}
+		return ""
+	}
+
+	const maxContext = 32 * 1024
+	result := strings.TrimSpace(string(out))
+	if len(result) > maxContext {
+		result = result[:maxContext] + "\n[context truncated by council]"
+	}
+	if result != "" && verbose {
+		fmt.Printf("🧠 Context hook: injected %d bytes from `%s`\n", len(result), raw)
+		flush()
+	}
+	return result
 }
 
 // delegateToRemote handles the SSH connection and execution on a remote host
@@ -821,8 +895,96 @@ func dirInPath(dir string) bool {
 	return false
 }
 
+// collectAgentStatuses builds the full agent inventory: every supported agent,
+// whether it is installed, and its best-effort (or ping-verified) auth state.
+func collectAgentStatuses(ctx context.Context, cfg Config, withPing bool) ([]AgentStatus, map[string]int) {
+	dummyLog, _ := newAuditLogger("doctor", []string{os.DevNull}, []string{os.DevNull})
+	agents := detectAgents(ctx, cfg, dummyLog)
+
+	var statuses []AgentStatus
+	counts := map[string]int{
+		"supported": len(councilRosterAgents), "installed": 0,
+		"authenticated": 0, "login_required": 0, "unknown": 0,
+	}
+
+	for _, name := range councilRosterAgents {
+		entry := catalogEntry(name)
+		st := AgentStatus{Name: string(name), Auth: "unknown"}
+		if entry != nil {
+			st.Executable = entry.Executable
+			st.Vendor = entry.Vendor
+			st.InstallHint = entry.InstallHint
+			st.LoginHint = entry.LoginHint
+			st.LimitsURL = entry.LimitsURL
+			st.LimitsHint = entry.LimitsHint
+			st.ModelEnv = entry.ModelEnv
+		}
+
+		resolved, installed := agents[name]
+		st.Installed = installed
+		if installed {
+			counts["installed"]++
+			st.Path = resolved.Path
+			st.Auth, st.AuthMethod = authProbe(ctx, entry, resolved.Path)
+
+			if withPing {
+				pt := cfg.PingTimeout
+				if pt < 15 {
+					pt = 15
+				}
+				pingCtx, cancel := context.WithTimeout(ctx, time.Duration(pt)*time.Second)
+				override := getModelOverride(name, cfg)
+				args := councilPingArgs(name, "RESPOND WITH 'OK' ONLY.", "", override, cfg.Unrestricted)
+				runner := &LocalRunner{}
+				stdout, stderr, err := runner.Run(pingCtx, resolved.Path, args, nil)
+				cancel()
+				output := string(stdout) + string(stderr)
+				if err == nil || strings.Contains(strings.ToUpper(output), "OK") {
+					st.Auth, st.AuthMethod = "yes", "ping"
+				} else {
+					st.Auth, st.AuthMethod = "no", "ping"
+				}
+			}
+
+			switch st.Auth {
+			case "yes", "likely":
+				counts["authenticated"]++
+			case "no":
+				counts["login_required"]++
+			default:
+				counts["unknown"]++
+			}
+		}
+
+		statuses = append(statuses, st)
+	}
+	return statuses, counts
+}
+
 // handleDoctor handles the 'doctor' subcommand
 func handleDoctor(ctx context.Context, cfg Config) int {
+	if cfg.DoctorJSON {
+		statuses, counts := collectAgentStatuses(ctx, cfg, cfg.DoctorPing)
+		payload := map[string]any{
+			"council_version": Version,
+			"platform":        runtime.GOOS + "/" + runtime.GOARCH,
+			"repo_root":       cfg.RepoRoot,
+			"ping_verified":   cfg.DoctorPing,
+			"totals":          counts,
+			"agents":          statuses,
+		}
+		out, err := json.MarshalIndent(payload, "", "  ")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error encoding JSON: %v\n", err)
+			return 2
+		}
+		fmt.Println(string(out))
+		if counts["installed"] == 0 {
+			return 1
+		}
+		return 0
+	}
+
 	fmt.Println("🩺 AI Council Health Check")
 	fmt.Println("-------------------------")
 
@@ -855,28 +1017,118 @@ func handleDoctor(ctx context.Context, cfg Config) int {
 		fmt.Println("📡 Remote delegation: not configured (optional — set with --remote or COUNCIL_REMOTE_HOST)")
 	}
 
-	// 3. Check Local Agents
-	fmt.Println("\n🤖 Local Agent Discovery:")
+	// 3. Agent inventory with auth state
+	fmt.Println("\n🤖 Agent Inventory:")
+	if cfg.DoctorPing {
+		fmt.Println("   (auth verified by live ping — this sends one tiny prompt per agent)")
+	}
 	flush()
 
-	dummyLog, _ := newAuditLogger("doctor", []string{os.DevNull}, []string{os.DevNull})
-	agents := detectAgents(ctx, cfg, dummyLog)
-
-	for _, name := range councilRosterAgents {
-		if resolved, ok := agents[name]; ok {
-			fmt.Printf("  ✅ %-10s: %s\n", name, resolved.Path)
-		} else {
-			fmt.Printf("  ❌ %-10s: not found\n", name)
+	statuses, counts := collectAgentStatuses(ctx, cfg, cfg.DoctorPing)
+	for _, st := range statuses {
+		if !st.Installed {
+			fmt.Printf("  ❌ %-12s not installed   → %s\n", st.Name, st.InstallHint)
+			continue
+		}
+		authLabel := map[string]string{
+			"yes": "✅ authenticated", "likely": "🔑 credentials found",
+			"no": "🔒 login required", "unknown": "❔ auth unknown",
+		}[st.Auth]
+		fmt.Printf("  ✅ %-12s %s (%s)\n", st.Name, authLabel, st.Path)
+		if st.Auth == "no" && st.LoginHint != "" {
+			fmt.Printf("     → %s\n", st.LoginHint)
 		}
 	}
 
-	if len(agents) == 0 {
+	fmt.Printf("\n📊 Summary: %d supported | %d installed | %d authenticated | %d login required | %d unknown\n",
+		counts["supported"], counts["installed"], counts["authenticated"], counts["login_required"], counts["unknown"])
+	fmt.Println("   Machine-readable: council doctor --json   Definitive auth check: council doctor --ping")
+	fmt.Println("   Limits insight: each agent entry in --json carries limits_url / limits_hint for its vendor plan.")
+
+	if counts["installed"] == 0 {
 		fmt.Println()
 		printNoAgentsHelp()
 		return 1
 	}
 
-	fmt.Printf("\n✅ Doctor check complete. %d agent(s) ready.\n", len(agents))
+	fmt.Printf("\n✅ Doctor check complete. %d agent(s) ready.\n", counts["installed"])
+	return 0
+}
+
+// handleSetup handles the 'setup' subcommand: reports missing agent CLIs and
+// (with --apply) installs the ones that have a safe, non-interactive installer.
+func handleSetup(ctx context.Context, cfg Config) int {
+	fmt.Println("🔧 AI Council Setup")
+	fmt.Println("-------------------")
+
+	dummyLog, _ := newAuditLogger("setup", []string{os.DevNull}, []string{os.DevNull})
+	detectCfg := cfg
+	if detectCfg.AgentCheckTimeout <= 0 {
+		detectCfg.AgentCheckTimeout = 8
+	}
+	agents := detectAgents(ctx, detectCfg, dummyLog)
+
+	var missing []*AgentCatalogEntry
+	for _, name := range councilRosterAgents {
+		if _, ok := agents[name]; ok {
+			fmt.Printf("  ✅ %-12s already installed\n", name)
+			continue
+		}
+		if entry := catalogEntry(name); entry != nil {
+			missing = append(missing, entry)
+		}
+	}
+
+	if len(missing) == 0 {
+		fmt.Println("\n✅ Every supported agent CLI is already installed. Run: council doctor")
+		return 0
+	}
+
+	fmt.Printf("\n📦 %d agent(s) not installed:\n", len(missing))
+	for _, entry := range missing {
+		fmt.Printf("  ❌ %-12s %s\n", entry.Name, entry.InstallHint)
+	}
+
+	if !cfg.SetupApply {
+		fmt.Println("\n💡 Run `council setup --apply` to install the ones with package-manager installers.")
+		fmt.Println("   Agents marked with a URL need a manual install step. After installing, sign in to")
+		fmt.Println("   each CLI once, then verify with: council doctor")
+		return 0
+	}
+
+	fmt.Println("\n🚀 Installing (package-manager installers only)...")
+	failures := 0
+	for _, entry := range missing {
+		argv := installArgv(entry)
+		if argv == nil {
+			fmt.Printf("  ⏭️  %-12s manual install required: %s\n", entry.Name, entry.InstallHint)
+			continue
+		}
+		fmt.Printf("  📥 %-12s %s ...\n", entry.Name, strings.Join(argv, " "))
+		flush()
+		installCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+		cmd := exec.CommandContext(installCtx, argv[0], argv[1:]...)
+		out, err := cmd.CombinedOutput()
+		cancel()
+		if err != nil {
+			failures++
+			fmt.Printf("  ❌ %-12s install failed: %v\n", entry.Name, err)
+			tail := string(out)
+			if len(tail) > 400 {
+				tail = tail[len(tail)-400:]
+			}
+			if strings.TrimSpace(tail) != "" {
+				fmt.Printf("     %s\n", strings.TrimSpace(tail))
+			}
+		} else {
+			fmt.Printf("  ✅ %-12s installed. Sign in: %s\n", entry.Name, entry.LoginHint)
+		}
+	}
+
+	fmt.Println("\n🩺 Verify with: council doctor")
+	if failures > 0 {
+		return 1
+	}
 	return 0
 }
 
@@ -888,5 +1140,6 @@ func printNoAgentsHelp() {
 	fmt.Println("   Codex CLI     npm install -g @openai/codex               then: codex")
 	fmt.Println("   Copilot CLI   npm install -g @github/copilot             then: copilot")
 	fmt.Println("   Cursor CLI    https://cursor.com/cli                     then: cursor-agent login")
+	fmt.Println("   ...or run `council setup` to see the full 12-agent roster and installers.")
 	fmt.Println("   After installing, run each CLI once to sign in, then re-run: council doctor")
 }

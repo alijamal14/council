@@ -84,7 +84,7 @@ func TestIsValidOutput_MissingFile(t *testing.T) {
 }
 
 func TestContainsErrorPattern(t *testing.T) {
- tests := []struct {
+	tests := []struct {
 		content  string
 		expected bool
 	}{

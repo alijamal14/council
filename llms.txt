@@ -1,10 +1,12 @@
 # AI Council Orchestrator
 
-> AI Council is a free, open-source, cross-platform CLI (macOS, Linux, Windows) that runs multiple AI coding agent CLIs — Claude Code, Gemini CLI, OpenAI Codex, GitHub Copilot, Cursor, Antigravity — in parallel on the same task, collects their independent plans, runs an anonymized critique pass with a Devil's Advocate, and saves the whole session to disk as auditable artifacts. It requires no API keys: it orchestrates vendor CLIs the user has already installed and authenticated.
+> AI Council is a free, open-source, cross-platform CLI (macOS, Linux, Windows) that runs multiple AI coding agent CLIs — Claude Code, Gemini CLI, OpenAI Codex, GitHub Copilot, Cursor, Antigravity, Aider, OpenCode, Qwen Code, Goose, Amp, Factory Droid — in parallel on the same task, collects their independent plans, runs an anonymized critique pass with a Devil's Advocate, and saves the whole session to disk as auditable artifacts. It requires no API keys: it orchestrates vendor CLIs the user has already installed and authenticated.
 
 Key facts:
 - Install: `brew install alijamal14/tap/council` (macOS/Linux), `scoop install council` from bucket `alijamal14/scoop-bucket` (Windows), `go install github.com/alijamal14/council@latest`, or install scripts in `scripts/`.
-- Verify setup: `council doctor` (lists which agent CLIs were discovered).
+- Verify setup: `council doctor` (agent inventory + auth state). Machine-readable: `council doctor --json` returns totals {supported, installed, authenticated, login_required} plus per-agent auth, login hints, and vendor limits URLs. `--ping` verifies auth with one tiny prompt per agent.
+- Install missing agent CLIs: `council setup` (list) or `council setup --apply` (runs npm/pip installers).
+- RAG hook: set `COUNCIL_CONTEXT_CMD="<retrieval command>"` and Council injects its stdout into every agent's context.
 - Run: `council "your task"` — needs at least one supported AI CLI installed and signed in.
 - Continue a session: `council --continue council_runs/run_<timestamp> "feedback"`.
 - Results: written to `council_runs/run_<timestamp>/` as `plan.<agent>.txt`, `critique.<agent>.txt`, `label_map.json`, `brief.txt`, and `audit.jsonl`.

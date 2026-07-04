@@ -107,9 +107,9 @@ func TestResolveDomain(t *testing.T) {
 	}
 
 	tests := []struct {
-		task            string
-		expectedDomain  string
-		expectedScore   int
+		task           string
+		expectedDomain string
+		expectedScore  int
 	}{
 		{"council consensus meeting", "council", 3},
 		{"minecraft server setup", "minecraft", 2},

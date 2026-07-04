@@ -28,13 +28,22 @@ const (
 	AgentCopilot     AgentName = "Copilot"
 	AgentCursor      AgentName = "Cursor"
 	AgentAntigravity AgentName = "Antigravity"
+	AgentAider       AgentName = "Aider"
+	AgentOpenCode    AgentName = "OpenCode"
+	AgentQwen        AgentName = "Qwen"
+	AgentGoose       AgentName = "Goose"
+	AgentAmp         AgentName = "Amp"
+	AgentDroid       AgentName = "Droid"
 )
 
 // councilRosterAgents is the subprocess roster this binary discovers and runs (order only affects goroutine scheduling).
 //
 // Cursor Agent CLI integration follows non-interactive / print semantics described at:
 // https://cursor.com/docs/cli/overview https://cursor.com/docs/cli/using https://cursor.com/docs/cli/reference/output-format
-var councilRosterAgents = []AgentName{AgentGemini, AgentCodex, AgentClaude, AgentCopilot, AgentCursor, AgentAntigravity}
+var councilRosterAgents = []AgentName{
+	AgentGemini, AgentCodex, AgentClaude, AgentCopilot, AgentCursor, AgentAntigravity,
+	AgentAider, AgentOpenCode, AgentQwen, AgentGoose, AgentAmp, AgentDroid,
+}
 
 // retrySleep is the sleep function used between runAgent retry attempts.
 // Tests may replace it with a no-op to avoid real delays.
@@ -402,6 +411,8 @@ func councilSpawnArgs(logical AgentName, prompt string, copilotSubstituteModel s
 			args = append(args, "--dangerously-skip-permissions")
 		}
 		args = append(args, prompt)
+	case AgentAider, AgentOpenCode, AgentQwen, AgentGoose, AgentAmp, AgentDroid:
+		args = extendedAgentArgs(logical, prompt, unrestricted)
 	default:
 		args = []string{"-p", prompt}
 	}
@@ -418,6 +429,43 @@ func councilSpawnArgs(logical AgentName, prompt string, copilotSubstituteModel s
 		return append([]string{"--model", modelOverride}, args...)
 	}
 	return args
+}
+
+// extendedAgentArgs returns headless argv for the extended roster. Spawn and
+// ping use the same argv for these agents.
+//
+// Flag sources:
+//   - Aider scripting mode: https://aider.chat/docs/scripting.html (ask mode keeps runs text-only)
+//   - OpenCode run: https://opencode.ai/docs/cli
+//   - Qwen Code headless (Gemini CLI fork): https://qwenlm.github.io/qwen-code-docs/en/users/features/headless/
+//   - Goose headless run: https://block.github.io/goose/docs/guides/goose-cli-commands
+//   - Amp execute mode: https://ampcode.com/manual
+//   - Droid exec: https://docs.factory.ai/cli/droid-exec/overview
+func extendedAgentArgs(logical AgentName, prompt string, unrestricted bool) []string {
+	switch logical {
+	case AgentAider:
+		// Ask mode: analysis/planning only, no file edits — matches Council's text-only contract.
+		return []string{"--chat-mode", "ask", "--yes-always", "--no-auto-commits", "--message", prompt}
+	case AgentOpenCode:
+		return []string{"run", prompt}
+	case AgentQwen:
+		if unrestricted {
+			return []string{"--approval-mode", "yolo", "-p", prompt}
+		}
+		return []string{"-p", prompt}
+	case AgentGoose:
+		return []string{"run", "--no-session", "-t", prompt}
+	case AgentAmp:
+		// Amp's execute mode; permission posture is governed by the user's amp settings.
+		return []string{"-x", prompt}
+	case AgentDroid:
+		if unrestricted {
+			return []string{"exec", "--auto", "medium", prompt}
+		}
+		// Default droid exec autonomy is read-focused — safe for planning.
+		return []string{"exec", prompt}
+	}
+	return []string{"-p", prompt}
 }
 
 // councilPingArgs uses lightweight headless argv so pre-flight pings finish quickly without full tool/agent cold starts.
@@ -467,6 +515,8 @@ func councilPingArgs(logical AgentName, prompt string, copilotSubstituteModel st
 			args = append(args, "--dangerously-skip-permissions")
 		}
 		args = append(args, prompt)
+	case AgentAider, AgentOpenCode, AgentQwen, AgentGoose, AgentAmp, AgentDroid:
+		args = extendedAgentArgs(logical, prompt, unrestricted)
 	default:
 		args = []string{"-p", prompt}
 	}
@@ -825,6 +875,17 @@ func getModelOverride(agent AgentName, cfg Config) string {
 		return cfg.CursorModel
 	case AgentAntigravity:
 		return cfg.AntigravityModel
+	case AgentAider:
+		return cfg.AiderModel
+	case AgentOpenCode:
+		return cfg.OpenCodeModel
+	case AgentQwen:
+		return cfg.QwenModel
+	case AgentGoose:
+		return cfg.GooseModel
+	case AgentDroid:
+		return cfg.DroidModel
+	// Amp has no --model flag; model selection lives in amp settings.
 	default:
 		return ""
 	}
