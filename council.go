@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -379,6 +380,9 @@ func run(ctx context.Context, cfg Config) int {
 
 	if len(detectedAgents) == 0 {
 		fmt.Println("❌ No agents passed pre-flight ping.")
+		fmt.Println()
+		printNoAgentsHelp()
+		fmt.Println("   For a full diagnostic, run: council doctor")
 		log.Log("ABORT", "No agents passed pre-flight ping")
 		return 2
 	}
@@ -698,44 +702,123 @@ func handleInstall(cfg Config) int {
 	binaryPath, _ = filepath.Abs(binaryPath)
 
 	home, _ := os.UserHomeDir()
-	installDirs := []string{
-		"/usr/local/bin",
-		filepath.Join(home, ".local", "bin"),
-		filepath.Join(home, "bin"),
+
+	binaryName := "council"
+	var installDirs []string
+	if runtime.GOOS == "windows" {
+		binaryName = "council.exe"
+		if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {
+			installDirs = append(installDirs, filepath.Join(localAppData, "Programs", "council"))
+		}
+		installDirs = append(installDirs, filepath.Join(home, "bin"))
+	} else {
+		installDirs = []string{
+			"/usr/local/bin",
+			filepath.Join(home, ".local", "bin"),
+			filepath.Join(home, "bin"),
+		}
 	}
 
 	var installDir string
 	for _, dir := range installDirs {
-		if _, err := os.Stat(dir); err == nil {
-			// Check if writable
-			testFile := filepath.Join(dir, ".council_install_test")
-			if err := os.WriteFile(testFile, []byte("test"), 0644); err == nil {
-				os.Remove(testFile)
-				installDir = dir
-				break
+		if dir == "" || dir == string(filepath.Separator) {
+			continue
+		}
+		if _, err := os.Stat(dir); err != nil {
+			// Only auto-create user-owned locations, never system dirs.
+			if dir == "/usr/local/bin" {
+				continue
 			}
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				continue
+			}
+		}
+		testFile := filepath.Join(dir, ".council_install_test")
+		if err := os.WriteFile(testFile, []byte("test"), 0644); err == nil {
+			os.Remove(testFile)
+			installDir = dir
+			break
 		}
 	}
 
 	if installDir == "" {
-		fmt.Println("❌ No writable install directory found in PATH.")
-		fmt.Println("   Please add ~/.local/bin to your PATH and try again.")
+		fmt.Println("❌ No writable install directory found.")
+		if runtime.GOOS == "windows" {
+			fmt.Println("   Tried %LOCALAPPDATA%\\Programs\\council and %USERPROFILE%\\bin.")
+		} else {
+			fmt.Println("   Tried /usr/local/bin, ~/.local/bin, and ~/bin.")
+		}
 		return 2
 	}
 
-	dest := filepath.Join(installDir, "council")
+	dest := filepath.Join(installDir, binaryName)
 
-	// Create symlink
-	os.Remove(dest) // Remove existing if any
-	err = os.Symlink(binaryPath, dest)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Error creating symlink: %v\n", err)
+	if samePath(binaryPath, dest) {
+		fmt.Printf("✅ Council is already installed at: %s\n", dest)
+		return 0
+	}
+
+	// Copy (not symlink): survives deletion of the build directory and works on
+	// Windows where symlinks require elevated privileges.
+	if err := copyExecutable(binaryPath, dest); err != nil {
+		fmt.Fprintf(os.Stderr, "❌ Error installing binary: %v\n", err)
 		return 2
 	}
 
 	fmt.Printf("✅ Success! Council is now installed at: %s\n", dest)
-	fmt.Println("   You can now run 'council' from any directory.")
+
+	if !dirInPath(installDir) {
+		fmt.Printf("\n⚠️  %s is not in your PATH.\n", installDir)
+		if runtime.GOOS == "windows" {
+			fmt.Println("   Add it in PowerShell (then restart your terminal):")
+			fmt.Printf("     [Environment]::SetEnvironmentVariable('Path', [Environment]::GetEnvironmentVariable('Path','User') + ';%s', 'User')\n", installDir)
+		} else {
+			fmt.Println("   Add this line to your ~/.bashrc or ~/.zshrc:")
+			fmt.Printf("     export PATH=\"$PATH:%s\"\n", installDir)
+		}
+	} else {
+		fmt.Println("   You can now run 'council' from any directory.")
+	}
 	return 0
+}
+
+// samePath reports whether two paths refer to the same file location.
+func samePath(a, b string) bool {
+	absA, errA := filepath.Abs(a)
+	absB, errB := filepath.Abs(b)
+	if errA != nil || errB != nil {
+		return false
+	}
+	if runtime.GOOS == "windows" {
+		return strings.EqualFold(absA, absB)
+	}
+	return absA == absB
+}
+
+// copyExecutable copies src to dst with executable permissions, replacing dst if present.
+func copyExecutable(src, dst string) error {
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	// Write to a temp file in the target dir, then rename for atomicity and to
+	// avoid "text file busy" when overwriting a running binary.
+	tmp := dst + ".tmp"
+	if err := os.WriteFile(tmp, data, 0755); err != nil {
+		return err
+	}
+	os.Remove(dst)
+	return os.Rename(tmp, dst)
+}
+
+// dirInPath reports whether dir is present in the PATH environment variable.
+func dirInPath(dir string) bool {
+	for _, p := range filepath.SplitList(os.Getenv("PATH")) {
+		if samePath(p, dir) {
+			return true
+		}
+	}
+	return false
 }
 
 // handleDoctor handles the 'doctor' subcommand
@@ -745,38 +828,34 @@ func handleDoctor(ctx context.Context, cfg Config) int {
 
 	// 1. Check Repo Root
 	fmt.Printf("📂 Repo Root: %s\n", cfg.RepoRoot)
-	if _, err := os.Stat(filepath.Join(cfg.RepoRoot, "CLAUDE.md")); err == nil {
-		fmt.Println("  ✅ CLAUDE.md found")
-	} else {
-		fmt.Println("  ⚠️  CLAUDE.md not found (Registry resolution might be limited)")
+	if _, err := os.Stat(cfg.RegistryFile); err == nil {
+		fmt.Println("  ✅ Optional domain registry found")
 	}
 
-	// 2. Check SSH Agent
-	if sock := os.Getenv("SSH_AUTH_SOCK"); sock != "" {
-		fmt.Printf("🔑 SSH Agent: ONLINE (%s)\n", sock)
-	} else {
-		fmt.Println("  ⚠️  SSH Agent: OFFLINE (Remote delegation will require manual keys)")
-	}
-
-	// 3. Check Remote Connectivity
+	// 2. Check Remote Connectivity (optional feature — only probe when configured)
 	remoteHost := cfg.RemoteHost
 	if remoteHost == "" {
 		remoteHost = os.Getenv("COUNCIL_REMOTE_HOST")
 	}
-	if remoteHost == "" {
-		remoteHost = "localhost" // Default safe fallback
-	}
-
-	fmt.Printf("📡 Remote (%s): ", remoteHost)
-	flush()
-	cmd := exec.Command("ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=2", remoteHost, "echo OK")
-	if out, err := cmd.Output(); err == nil && strings.TrimSpace(string(out)) == "OK" {
-		fmt.Println("ONLINE")
+	if remoteHost != "" {
+		if sock := os.Getenv("SSH_AUTH_SOCK"); sock != "" {
+			fmt.Printf("🔑 SSH Agent: ONLINE (%s)\n", sock)
+		} else {
+			fmt.Println("⚠️  SSH Agent: OFFLINE (Remote delegation will require manual keys)")
+		}
+		fmt.Printf("📡 Remote (%s): ", remoteHost)
+		flush()
+		cmd := exec.Command("ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=2", remoteHost, "echo OK")
+		if out, err := cmd.Output(); err == nil && strings.TrimSpace(string(out)) == "OK" {
+			fmt.Println("ONLINE")
+		} else {
+			fmt.Println("OFFLINE / UNREACHABLE")
+		}
 	} else {
-		fmt.Println("OFFLINE / UNREACHABLE")
+		fmt.Println("📡 Remote delegation: not configured (optional — set with --remote or COUNCIL_REMOTE_HOST)")
 	}
 
-	// 4. Check Local Agents
+	// 3. Check Local Agents
 	fmt.Println("\n🤖 Local Agent Discovery:")
 	flush()
 
@@ -787,10 +866,27 @@ func handleDoctor(ctx context.Context, cfg Config) int {
 		if resolved, ok := agents[name]; ok {
 			fmt.Printf("  ✅ %-10s: %s\n", name, resolved.Path)
 		} else {
-			fmt.Printf("  ❌ %-10s: NOT FOUND\n", name)
+			fmt.Printf("  ❌ %-10s: not found\n", name)
 		}
 	}
 
-	fmt.Println("\n✅ Doctor check complete.")
+	if len(agents) == 0 {
+		fmt.Println()
+		printNoAgentsHelp()
+		return 1
+	}
+
+	fmt.Printf("\n✅ Doctor check complete. %d agent(s) ready.\n", len(agents))
 	return 0
+}
+
+// printNoAgentsHelp prints actionable guidance when no agent CLIs are available.
+func printNoAgentsHelp() {
+	fmt.Println("💡 Council needs at least one supported AI agent CLI installed and authenticated:")
+	fmt.Println("   Claude Code   npm install -g @anthropic-ai/claude-code   then: claude")
+	fmt.Println("   Gemini CLI    npm install -g @google/gemini-cli          then: gemini")
+	fmt.Println("   Codex CLI     npm install -g @openai/codex               then: codex")
+	fmt.Println("   Copilot CLI   npm install -g @github/copilot             then: copilot")
+	fmt.Println("   Cursor CLI    https://cursor.com/cli                     then: cursor-agent login")
+	fmt.Println("   After installing, run each CLI once to sign in, then re-run: council doctor")
 }
