@@ -371,6 +371,10 @@ func printSummary(dir string, results []RunResult) {
 	fmt.Println("\n--- Agent Report ---")
 	for _, entry := range entries {
 		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".txt") {
+			// brief.txt is the user's task text, not agent output — don't validate it.
+			if entry.Name() == "brief.txt" {
+				continue
+			}
 			path := filepath.Join(dir, entry.Name())
 			if isValidOutput(path) {
 				size := fileSize(path)
