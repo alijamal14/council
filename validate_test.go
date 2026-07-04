@@ -27,6 +27,49 @@ func TestIsValidOutput_RateLimit(t *testing.T) {
 	}
 }
 
+// A substantial answer that *discusses* error conditions (HTTP 429, panics,
+// rate limits) must not be rejected: only the head of a long output is scanned.
+// Regression test for a real council run where a correct plan mentioning
+// "returning HTTP 429/503" was failed four times.
+func TestIsValidOutput_SubstantialAnswerDiscussingErrors(t *testing.T) {
+	tmpdir := t.TempDir()
+	file := filepath.Join(tmpdir, "plan.txt")
+
+	body := "1. A huge buffer hides a throughput mismatch: workers cannot keep up and memory grows.\n" +
+		"2. Correct backpressure design: bounded channel; when full, shed load or slow intake "
+	for len(body) < 1100 {
+		body += "and propagate pressure upstream by rate-limiting producers with bounded queues. "
+	}
+	body += "\n3. Under sustained overload return HTTP 429/503 to callers instead of buffering forever.\n"
+
+	os.WriteFile(file, []byte(body), 0644)
+	if !isValidOutput(file) {
+		t.Error("substantial answer mentioning HTTP 429 must be valid")
+	}
+}
+
+// A long output is still invalid when the error appears at the start (real CLI
+// failures fail fast) or when a council marker is appended at the end.
+func TestIsValidOutput_LongOutputRealFailures(t *testing.T) {
+	tmpdir := t.TempDir()
+	filler := ""
+	for len(filler) < 1200 {
+		filler += "retrying with exponential backoff while the service recovers... "
+	}
+
+	headFail := filepath.Join(tmpdir, "head.txt")
+	os.WriteFile(headFail, []byte("Error: 429 Too Many Requests\n"+filler), 0644)
+	if isValidOutput(headFail) {
+		t.Error("long output with a leading rate-limit error must be invalid")
+	}
+
+	markerFail := filepath.Join(tmpdir, "marker.txt")
+	os.WriteFile(markerFail, []byte(filler+"\n[COUNCIL_AGENT_FAILED] X did not produce valid output after 4 attempts.\n"), 0644)
+	if isValidOutput(markerFail) {
+		t.Error("long output with a trailing failure marker must be invalid")
+	}
+}
+
 func TestIsValidOutput_TimeoutMarker(t *testing.T) {
 	tmpdir := t.TempDir()
 	file := filepath.Join(tmpdir, "timeout.txt")

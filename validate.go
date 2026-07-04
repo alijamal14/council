@@ -33,7 +33,13 @@ var errorPatterns = []string{
 	"[COUNCIL_AGENT_TIMEOUT]", "[COUNCIL_AGENT_FAILED]",
 }
 
-// isValidOutput checks if a file exists, is non-empty, and doesn't contain error patterns
+// isValidOutput checks if a file exists, is non-empty, and doesn't look like a CLI failure.
+//
+// Error-pattern scanning is scoped, not global: agents legitimately *discuss*
+// rate limits, panics, and HTTP 429s when the task itself is about them, so a
+// substantial answer must not be rejected for mentioning an error string in
+// its body. Real CLI failures are short, or fail fast (pattern near the start),
+// or carry an explicit council marker (always appended at the end).
 func isValidOutput(outFile string) bool {
 	// File must exist and be non-empty
 	data, err := os.ReadFile(outFile)
@@ -43,8 +49,21 @@ func isValidOutput(outFile string) bool {
 
 	content := string(data)
 
-	// Check for error patterns across the full file
-	if containsErrorPattern(content) {
+	// Council's own failure markers are authoritative wherever they appear.
+	lower := strings.ToLower(content)
+	if strings.Contains(lower, strings.ToLower("[COUNCIL_AGENT_TIMEOUT]")) ||
+		strings.Contains(lower, strings.ToLower("[COUNCIL_AGENT_FAILED]")) {
+		return false
+	}
+
+	// Short outputs get a full scan; substantial answers only reject on
+	// patterns near the start (where CLI startup/auth/transport errors land).
+	const substantialOutput = 1000
+	scanWindow := content
+	if len(content) >= substantialOutput {
+		scanWindow = content[:300]
+	}
+	if containsErrorPattern(scanWindow) {
 		return false
 	}
 
