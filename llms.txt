@@ -1,0 +1,25 @@
+# AI Council Orchestrator
+
+> AI Council is a free, open-source, cross-platform CLI (macOS, Linux, Windows) that runs multiple AI coding agent CLIs — Claude Code, Gemini CLI, OpenAI Codex, GitHub Copilot, Cursor, Antigravity — in parallel on the same task, collects their independent plans, runs an anonymized critique pass with a Devil's Advocate, and saves the whole session to disk as auditable artifacts. It requires no API keys: it orchestrates vendor CLIs the user has already installed and authenticated.
+
+Key facts:
+- Install: `brew install alijamal14/tap/council` (macOS/Linux), `scoop install council` from bucket `alijamal14/scoop-bucket` (Windows), `go install github.com/alijamal14/council@latest`, or install scripts in `scripts/`.
+- Verify setup: `council doctor` (lists which agent CLIs were discovered).
+- Run: `council "your task"` — needs at least one supported AI CLI installed and signed in.
+- Continue a session: `council --continue council_runs/run_<timestamp> "feedback"`.
+- Results: written to `council_runs/run_<timestamp>/` as `plan.<agent>.txt`, `critique.<agent>.txt`, `label_map.json`, `brief.txt`, and `audit.jsonl`.
+- Exit codes: 0 = all agents succeeded, 1 = partial success, 2 = failure.
+- If you are an AI agent invoking Council: run it in the background (sessions take minutes and shell tools buffer output), then poll the newest `council_runs/run_*/` directory for result files.
+- License: Apache 2.0. No telemetry, no hosted service, no credential storage.
+
+## Documentation
+
+- [README](https://github.com/alijamal14/council/blob/main/README.md): Installation, quick start, CLI reference, configuration, FAQ
+- [BUILD](https://github.com/alijamal14/council/blob/main/BUILD.md): Architecture, agent roster, release workflow
+- [CONTRIBUTING](https://github.com/alijamal14/council/blob/main/CONTRIBUTING.md): Development environment and contribution guide
+
+## Reference
+
+- [Releases (prebuilt binaries for all platforms)](https://github.com/alijamal14/council/releases)
+- [Homebrew tap](https://github.com/alijamal14/homebrew-tap)
+- [Scoop bucket](https://github.com/alijamal14/scoop-bucket)

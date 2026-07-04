@@ -1,13 +1,37 @@
 # AI Council Orchestrator
 
+[![CI](https://github.com/alijamal14/council/actions/workflows/ci.yml/badge.svg)](https://github.com/alijamal14/council/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/alijamal14/council)](https://github.com/alijamal14/council/releases/latest)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/alijamal14/council)](https://golang.org/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-AI Council is a cross-platform Go CLI that runs multiple AI agent command-line tools in parallel, collects their plans, asks one agent to critique the result, and saves the full session as auditable output.
+**Get a second (and third, and fourth) opinion from your AI coding tools — in one command.**
 
-It is designed for developers who already use tools such as Claude, Gemini, Codex, Copilot, Cursor, or Antigravity and want a repeatable way to compare model perspectives on complex engineering tasks.
+AI Council is a free, open-source, cross-platform CLI that runs multiple AI agent command-line tools — **Claude Code, Gemini CLI, OpenAI Codex, GitHub Copilot, Cursor, Antigravity** — in parallel on the same task, collects their independent plans, runs a critique pass (including a Devil's Advocate), and saves the full multi-agent session as auditable output. Works on **macOS, Linux, and Windows**.
 
-> **Council is not an AI model, hosted service, or credential manager.** It orchestrates the vendor CLIs you have already installed and authenticated.
+It is designed for developers — and for AI coding agents themselves — who want a repeatable way to compare model perspectives on complex engineering tasks.
+
+> **Council is not an AI model, hosted service, or credential manager.** It orchestrates the vendor CLIs you have already installed and authenticated. No API keys are collected; nothing leaves your machine except through the vendor CLIs you already trust.
+
+---
+
+## Quick Start (60 seconds)
+
+```bash
+# 1. Install (macOS/Linux)
+brew install alijamal14/tap/council
+# ...or Windows (PowerShell)
+#   scoop bucket add alijamal14 https://github.com/alijamal14/scoop-bucket
+#   scoop install council
+
+# 2. Check which AI CLIs Council can see
+council doctor
+
+# 3. Convene your first council
+council "Should we migrate this service from REST to gRPC? List risks."
+```
+
+Results land in `council_runs/run_<timestamp>/` as one plan file per agent plus critiques. You need **at least one** supported AI CLI installed and signed in — Council skips the rest automatically.
 
 ---
 
@@ -66,9 +90,9 @@ Council can use the following CLIs when they are installed and authenticated. Un
 
 ## Requirements
 
-- **Go 1.25+** — only if building from source.
 - **One or more supported AI agent CLIs** installed on your system.
 - **Authentication** completed through each vendor CLI before running Council.
+- **Go 1.21+** — only if building from source (the required toolchain downloads automatically).
 
 ```bash
 # Examples of vendor authentication:
@@ -108,7 +132,7 @@ curl -fsSL https://raw.githubusercontent.com/alijamal14/council/main/scripts/ins
 powershell -c "irm https://raw.githubusercontent.com/alijamal14/council/main/scripts/install.ps1 | iex"
 ```
 
-### Go Install (if you already have Go 1.25+)
+### Go Install (if you already have Go 1.21+)
 
 ```bash
 go install github.com/alijamal14/council@latest
@@ -295,6 +319,61 @@ Use `--repo` or set `COUNCIL_REPO_ROOT` to explicitly set the repository root:
 ```bash
 council --repo /path/to/project "Your task."
 ```
+
+---
+
+## Using Council from AI Coding Agents
+
+Council is built to be invoked *by* AI agents, not just by humans. If you are an AI coding agent (Claude Code, Cursor, Copilot, Codex, Gemini CLI) reading this:
+
+1. **Run Council in the background.** Council sessions take minutes and most agent shell tools buffer output until completion. Launch with background execution, then poll the newest `council_runs/run_*/` directory for `plan.*.txt` and `critique.*.txt` files.
+2. **Read the artifacts, not stdout.** Every result is written to disk: per-agent plans, critiques, `label_map.json`, and `audit.jsonl`.
+3. **Continue sessions with feedback** using `council --continue <run_dir> "feedback"`.
+
+Council detects common agent callers (Claude Code, Codex, Copilot, Gemini) and prints an invocation guide to stderr automatically. A machine-readable project summary is available in [`llms.txt`](llms.txt).
+
+Example instruction you can add to your agent's project config (e.g., `CLAUDE.md`, `AGENTS.md`, `.cursorrules`):
+
+```markdown
+When a task needs multi-model consensus, run `council "<question>"` in the
+background, then poll `council_runs/` for plan.*.txt and critique.*.txt results.
+```
+
+---
+
+## FAQ
+
+### What is AI Council?
+
+AI Council is an open-source command-line tool that orchestrates multiple AI coding assistants (Claude, Gemini, Codex, Copilot, Cursor, Antigravity) in parallel on one task, then has them critique each other's plans. Think of it as a design-review meeting for AI models, with a written record.
+
+### Is AI Council free?
+
+Yes. The orchestrator is free and Apache 2.0 licensed. You pay only whatever your existing AI CLI subscriptions or API plans cost — Council adds no fees and calls no APIs of its own.
+
+### Do I need API keys to use Council?
+
+No. Council never asks for or stores API keys. It shells out to vendor CLIs you have already installed and authenticated (e.g., via `claude login` or `gemini auth login`).
+
+### Which operating systems does Council support?
+
+macOS (Intel and Apple Silicon), Linux (x86_64 and ARM64), and Windows (x86_64 and ARM64). Prebuilt binaries are published for all of them on the [releases page](https://github.com/alijamal14/council/releases).
+
+### How many AI CLIs do I need installed?
+
+One is enough (Council runs a self-critique pass). Two or more unlocks the full experience: independent plans plus a Devil's Advocate critique that challenges the consensus.
+
+### How is this different from just asking each AI tool myself?
+
+Council asks all of them the *same* question *simultaneously*, anonymizes the plans (labeled A, B, C...) so the critique phase can't play favorites, assigns one model to argue against the consensus, and archives everything for audit. Doing that by hand takes 30+ minutes; Council does it in one command.
+
+### Can I use Council in CI or scripts?
+
+Yes. Council is a plain CLI with meaningful exit codes (0 = all agents succeeded, 1 = partial, 2 = failure) and writes machine-readable `audit.jsonl` logs. Use `--agents` to pin a deterministic roster and `--timeout` to bound runtime.
+
+### Does Council send my code anywhere?
+
+Council itself makes no network calls during a normal local session (SSH is used only if you opt into `--remote`). Your prompts and repository context reach model providers only through the vendor CLIs you invoke, subject to each vendor's own settings.
 
 ---
 
