@@ -744,7 +744,7 @@ func handleInstall(cfg Config) int {
 	if installDir == "" {
 		fmt.Println("❌ No writable install directory found.")
 		if runtime.GOOS == "windows" {
-			fmt.Println("   Tried %LOCALAPPDATA%\\Programs\\council and %USERPROFILE%\\bin.")
+			fmt.Printf("   Tried %%LOCALAPPDATA%%\\Programs\\council and %%USERPROFILE%%\\bin.\n")
 		} else {
 			fmt.Println("   Tried /usr/local/bin, ~/.local/bin, and ~/bin.")
 		}
