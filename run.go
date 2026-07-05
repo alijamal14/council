@@ -362,9 +362,13 @@ func printSummary(dir string, results []RunResult) {
 	}
 
 	failoverFiles := make(map[string]bool, len(results))
+	durations := make(map[string]time.Duration, len(results))
 	for _, result := range results {
 		if result.IsFallback {
 			failoverFiles[result.OutFile] = true
+		}
+		if result.Duration > 0 {
+			durations[result.OutFile] = result.Duration
 		}
 	}
 
@@ -382,7 +386,11 @@ func printSummary(dir string, results []RunResult) {
 				if failoverFiles[path] {
 					status = "🔄"
 				}
-				fmt.Printf("  %s %s (%d bytes)\n", status, entry.Name(), size)
+				timing := ""
+				if d, ok := durations[path]; ok {
+					timing = dim(fmt.Sprintf(", %.1fs", d.Seconds()))
+				}
+				fmt.Printf("  %s %s (%d bytes%s)\n", status, entry.Name(), size, timing)
 			} else {
 				// Read file to distinguish timeout vs failed vs other
 				data, readErr := os.ReadFile(path)

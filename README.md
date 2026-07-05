@@ -24,14 +24,17 @@ brew install alijamal14/tap/council
 #   scoop bucket add alijamal14 https://github.com/alijamal14/scoop-bucket
 #   scoop install council
 
-# 2. Check which AI CLIs Council can see
-council doctor
+# 2. Install every supported AI CLI (latest stable, official channels)
+council setup --apply          # or: council setup --apply --free  (free agents only)
 
-# 3. Convene your first council
+# 3. Sign in to each one (guided)
+council login
+
+# 4. Convene your first council
 council "Should we migrate this service from REST to gRPC? List risks."
 ```
 
-Results land in `council_runs/run_<timestamp>/` as one plan file per agent plus critiques. You need **at least one** supported AI CLI installed and signed in — Council skips the rest automatically.
+Results land in `council_runs/run_<timestamp>/` as one plan file per agent plus critiques. You need **at least one** supported AI CLI installed and signed in — Council skips the rest automatically. `council doctor` shows what Council can see at any time.
 
 ---
 
@@ -265,8 +268,16 @@ Council keeps the newest **200** `run_*` directories by default. Rotation happen
 | `council doctor` | Check agent CLI discovery, auth state, and connectivity. | |
 | `council doctor --json` | Machine-readable agent inventory (installed / authenticated / login required / limits). | |
 | `council doctor --ping` | Verify auth definitively by sending one tiny prompt per installed agent. | |
-| `council setup` | List missing agent CLIs with install commands. | |
-| `council setup --apply` | Install missing agents that have package-manager installers (npm/pip). | |
+| `council setup` | List missing agent CLIs with install commands (free-tier agents are tagged). | |
+| `council setup --apply` | Install every missing agent's latest stable release via its official channel (npm/pip/vendor script). | |
+| `council setup --apply --free` | Install only the free-tier / open-source agents. | |
+| `council login` | Sign-in checklist: shows which installed agents still need auth and how to fix each. | |
+| `council login <agent>` | Launch that agent's interactive sign-in flow, then re-verify. | |
+| `council models` | Show each agent's active model (override or vendor default) and how to change it. | |
+| `council config set KEY VALUE` | Persist any `COUNCIL_*` setting (models, roster, hooks) — survives across runs. | |
+| `council config list` / `get` / `unset` / `path` | Inspect or edit persisted settings. | |
+| `council update` | Upgrade every installed agent CLI to latest stable; also checks for new Council releases. | |
+| `council update --check` | Report installed agent versions without changing anything. | |
 | `--version`, `-v` | Print version information. | |
 | `--agents` | Comma-separated agents to run (`antigravity`, `gemini`, `claude`, `codex`, `copilot`, `cursor`). | All discovered |
 | `--timeout` | Per-agent run timeout in seconds. | `300` |
@@ -325,7 +336,16 @@ COUNCIL_SSH_INSECURE=1 council --remote user@example.com "..."
 
 ## Configuration
 
-All configuration is done through environment variables:
+Every setting is an environment variable, and any of them can be **persisted** with
+`council config set KEY VALUE` (stored in `<user config dir>/council/config.env`;
+real environment variables always override the file):
+
+```bash
+council config set COUNCIL_CLAUDE_MODEL haiku    # pin a lighter Claude model permanently
+council config set COUNCIL_AGENTS claude,codex   # default roster without typing --agents
+council config set COUNCIL_AUTO_UPDATE 1         # background agent refresh after runs (max once/day)
+council config list                              # see everything (env overrides are flagged)
+```
 
 | Variable | Description |
 |----------|-------------|
@@ -336,10 +356,42 @@ All configuration is done through environment variables:
 | `COUNCIL_SSH_INSECURE` | Set to `1` to bypass SSH host key verification. |
 | `COUNCIL_DOMAINS_DIR` | Path to custom domain context manifests. |
 | `COUNCIL_CONTEXT_CMD` | Optional RAG hook: a command run with the task appended as final argument; its stdout (up to 32 KB) is injected into every agent's context. Example: `COUNCIL_CONTEXT_CMD="graphify query"`. |
-| `COUNCIL_<AGENT>_MODEL` | Pin a specific model for an agent (e.g., `COUNCIL_GEMINI_MODEL=gemini-2.0-pro`). Supported for all agents except Amp, which selects models itself. |
+| `COUNCIL_<AGENT>_MODEL` | Pin a specific model for an agent (e.g., `COUNCIL_GEMINI_MODEL=gemini-2.0-pro`). Supported for all agents except Amp, which selects models itself. See `council models`. |
+| `COUNCIL_AGENTS` | Default agent roster, comma-separated (same as `--agents`, but persistent). |
+| `COUNCIL_AUTO_UPDATE` | Set to `1` to refresh agent CLIs in the background after successful runs (at most once per day, never blocking). |
 | `COUNCIL_UNRESTRICTED` | Set to `1` to default to unrestricted mode (equivalent to passing `--yolo` on every run) — intended for dedicated always-on runners and CI. |
 | `COUNCIL_KEEP_RUNS` | Number of newest run directories to retain. Invalid values and values below `1` fall back to `200`. |
 | `COUNCIL_NO_ROTATE` | Set to `1` to disable automatic pruning of old run directories. |
+
+---
+
+## Models: defaults, overrides, and the advisor
+
+Council **never overrides an agent's model on its own** — each vendor's default is the
+standard, tuned for general use. Three tools sit on top of that:
+
+- **`council models`** — one table: every agent's active model (override or vendor default),
+  example fast/deep model names, and the exact command to change each.
+- **Easy switching** — persistent: `council config set COUNCIL_CLAUDE_MODEL haiku`;
+  one run only: `COUNCIL_CLAUDE_MODEL=opus council "task"`.
+- **Post-run advisor** — after each session Council prints at most a few dim `💡` lines when
+  the pairing looks off: a heavy model (opus/pro-class) on a trivial task is flagged as token
+  overkill with a cheaper suggestion, and a light model (haiku/flash-class) on a deep
+  architecture task gets a nudge toward a stronger one. Advice only — behavior never changes.
+
+## Self-maintaining roster
+
+- **`council update`** upgrades every installed agent CLI to its latest stable release through
+  the same official channel it was installed from (npm `@latest`, pip `--upgrade`, the CLI's own
+  self-updater, or the vendor's install script), and tells you when a new Council release exists.
+- **Auto-update (opt-in):** `council config set COUNCIL_AUTO_UPDATE 1` refreshes agents in the
+  background after successful runs — at most once a day, never blocking, log in the config dir.
+- **Quarantine:** an agent that fails its pre-flight ping in **3 consecutive sessions** (broken
+  install, obsolete binary, expired auth) is auto-disabled with a notice, so it stops costing a
+  45-second timeout every run. It is re-enabled automatically the moment it passes a ping again
+  (`council doctor --ping`), after a `council update`, or by naming it explicitly in `--agents`.
+- A gentle once-a-week reminder suggests `council update` if no check has happened; there is no
+  other nagging.
 
 ---
 
@@ -397,6 +449,29 @@ AI Council is an open-source command-line tool that orchestrates multiple AI cod
 ### How do I check which AI agents are installed and logged in?
 
 Run `council doctor` for a human-readable inventory or `council doctor --json` for machine-readable output with totals: how many agents are supported, installed, authenticated, and how many still need login. Add `--ping` for a definitive auth check (it sends one tiny prompt through each installed CLI). Each agent's entry also carries `limits_url` and `limits_hint` so you can check your remaining vendor quota before running a large council session.
+
+### How do I install all the AI agents at once?
+
+Run `council setup --apply`. It installs the latest stable release of every missing agent CLI
+through its official channel (npm, pip, or the vendor's install script — Windows PowerShell
+installers included). Use `--free` to install only free-tier/open-source agents (Gemini CLI,
+Qwen Code, OpenCode, Aider, Goose). Then run `council login` for a guided sign-in checklist.
+
+### How do I change which model each AI agent uses?
+
+`council models` shows every agent's active model. Change one persistently with
+`council config set COUNCIL_<AGENT>_MODEL <name>` or per run with an environment variable.
+Council uses each vendor's default model unless you override it, and after each session it
+advises (one dim line, never automatic) if a heavy model was overkill for a small task or a
+light model was underpowered for a complex one.
+
+### How does Council keep agent CLIs up to date?
+
+`council update` upgrades every installed agent to its latest stable release and reports new
+Council versions. Optionally set `COUNCIL_AUTO_UPDATE=1` to refresh agents in the background
+after runs (max once/day). Agents whose CLI breaks or goes obsolete are auto-disabled after 3
+consecutive failed pings — with a notice and a one-command re-enable — so they never silently
+slow your sessions.
 
 ### Is AI Council free?
 

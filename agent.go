@@ -221,6 +221,7 @@ type RunResult struct {
 	Success    bool
 	IsFallback bool
 	Attempts   int
+	Duration   time.Duration
 	Error      string
 }
 
@@ -748,6 +749,7 @@ func runAgent(ctx context.Context, name AgentName, resolved, copilotResolved *Re
 	totalAttempts := maxRetries + 1
 	attempt := 0
 	isFallback := false
+	started := time.Now()
 
 	for attempt < totalAttempts || (!isFallback && hasCopilot) {
 		attempt++
@@ -805,6 +807,7 @@ func runAgent(ctx context.Context, name AgentName, resolved, copilotResolved *Re
 				Success:    true,
 				IsFallback: isFallback,
 				Attempts:   attempt,
+				Duration:   time.Since(started),
 			}
 		}
 
@@ -847,6 +850,7 @@ func runAgent(ctx context.Context, name AgentName, resolved, copilotResolved *Re
 		Success:    false,
 		IsFallback: isFallback,
 		Attempts:   totalAttempts,
+		Duration:   time.Since(started),
 	}
 }
 
