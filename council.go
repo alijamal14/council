@@ -17,7 +17,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-var Version = "1.3.0"
+var Version = "1.3.1"
 
 var (
 	commit = "none"
@@ -178,6 +178,55 @@ func printInvocationGuide(caller string) {
 	fmt.Fprintln(os.Stderr, msg)
 }
 
+// printUsage is the full help: subcommands first (they are how you set
+// council up), then run flags. Wired into both `council help` and `-h`.
+func printUsage() {
+	fmt.Fprintf(os.Stderr, `AI Council Orchestrator v%s — run multiple AI agent CLIs in parallel on one task
+
+USAGE
+  council "task description"                 convene a council
+  council --continue <run_dir> "feedback"    continue a previous session
+  council <subcommand> [options]
+
+GETTING STARTED (in order)
+  council setup                list the 12 supported agent CLIs; missing ones show install commands
+  council setup --apply        install ALL missing agents (latest stable, official installers)
+  council setup --apply --free install only the free-tier / open-source agents
+  council login                sign-in checklist for every installed agent
+  council login <agent>        launch that agent's interactive sign-in flow (e.g. council login copilot)
+  council doctor               health check; --json machine-readable; --ping live auth verification
+
+EVERYDAY SUBCOMMANDS
+  council models               show each agent's model + how to change it (fast vs deep)
+  council config set KEY VALUE persist any COUNCIL_* setting (models, roster, auto-update)
+  council config list          show persisted settings
+  council update               upgrade all installed agent CLIs to latest stable
+  council update --check       report versions only
+  council install              copy this binary into your PATH
+  council version              print version
+
+RUN FLAGS
+  --agents <list>        comma-separated roster: gemini,claude,codex,copilot,cursor,antigravity,aider,opencode,qwen,goose,amp,droid
+  --timeout <sec>        per-agent run timeout (default 300)
+  --ping-timeout <sec>   pre-flight ping timeout per agent (default 45)
+  --check-timeout <sec>  agent binary discovery timeout (default 8)
+  --continue <dir>       continue a previous session (args after become feedback)
+  --repo <path>          repository root override
+  --remote <host>        delegate the session to a remote SSH host
+  --unrestricted / --yolo / -y   bypass agent sandboxes and approval prompts
+  --verbose=false        silence progress output
+`, Version)
+	fmt.Fprintln(os.Stderr, `
+EXAMPLES
+  council "Should we migrate this service from REST to gRPC? List risks."
+  council --agents claude,codex --timeout 240 "Review this API design"
+  council config set COUNCIL_CLAUDE_MODEL haiku     # cheaper model for small tasks
+  council config set COUNCIL_AUTO_UPDATE 1          # keep agents fresh automatically
+
+Results land in council_runs/run_<timestamp>/ (plan.<agent>.txt + critiques).
+Docs: https://github.com/alijamal14/council`)
+}
+
 func parseFlags() Config {
 	// Persisted settings (council config set ...) become env defaults before
 	// anything reads the environment. Real env vars still win.
@@ -194,6 +243,9 @@ func parseFlags() Config {
 		switch os.Args[1] {
 		case "version", "--version", "-v":
 			fmt.Printf("AI Council Orchestrator v%s (%s, built on %s)\n", Version, commit, date)
+			os.Exit(0)
+		case "help", "--help", "-h", "-help":
+			printUsage()
 			os.Exit(0)
 		case "install":
 			cfg.Subcommand = "install"
@@ -260,6 +312,7 @@ func parseFlags() Config {
 	yShortPtr := flag.Bool("y", false, "Alias for --unrestricted")
 	versionPtr := flag.Bool("version", false, "Print version and exit")
 
+	flag.Usage = printUsage
 	flag.Parse()
 
 	if *versionPtr {
