@@ -17,7 +17,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-var Version = "1.3.1"
+var Version = "1.3.2"
 
 var (
 	commit = "none"
@@ -1291,6 +1291,26 @@ func handleSetup(ctx context.Context, cfg Config) int {
 				fmt.Printf("     %s\n", strings.TrimSpace(tail))
 			}
 		} else {
+			if len(entry.PostInstall) > 0 {
+				fmt.Printf("  📥 %-12s second stage: %s ...\n", entry.Name, strings.Join(entry.PostInstall, " "))
+				flush()
+				postCtx, postCancel := context.WithTimeout(ctx, 10*time.Minute)
+				postCmd := exec.CommandContext(postCtx, entry.PostInstall[0], entry.PostInstall[1:]...)
+				postOut, postErr := postCmd.CombinedOutput()
+				postCancel()
+				if postErr != nil {
+					failures++
+					fmt.Printf("  ❌ %-12s second stage failed: %v\n", entry.Name, postErr)
+					tail := strings.TrimSpace(string(postOut))
+					if len(tail) > 400 {
+						tail = tail[len(tail)-400:]
+					}
+					if tail != "" {
+						fmt.Printf("     %s\n", tail)
+					}
+					continue
+				}
+			}
 			fmt.Printf("  ✅ %-12s installed. Sign in: council login %s\n", entry.Name, normalizeAgentKey(string(entry.Name)))
 		}
 	}

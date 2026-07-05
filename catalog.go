@@ -20,6 +20,7 @@ type AgentCatalogEntry struct {
 	Vendor         string
 	FreeTier       bool     // usable at no cost (free OAuth tier or open source w/ your own keys)
 	InstallCmd     []string // argv Council may run for `setup --apply` (empty = script or manual install)
+	PostInstall    []string // argv run after a successful InstallCmd (second-stage bootstrappers)
 	InstallHint    string   // human-readable install instruction (always set)
 	UnixInstall    string   // vendor install script pipeline for sh (macOS/Linux), "" if none
 	WinInstall     string   // vendor install command for PowerShell (Windows), "" if none
@@ -121,7 +122,10 @@ var agentCatalog = []AgentCatalogEntry{
 	},
 	{
 		Name: AgentAider, Executable: "aider", Vendor: "Aider (open source)", FreeTier: true,
-		InstallCmd:  []string{"python", "-m", "pip", "install", "--upgrade", "aider-install"},
+		InstallCmd: []string{"python", "-m", "pip", "install", "--upgrade", "aider-install"},
+		// aider-install is a bootstrapper: the pip package installs a console
+		// script that then installs the real aider via uv.
+		PostInstall: []string{"aider-install"},
 		InstallHint: "python -m pip install aider-install && aider-install",
 		LoginHint:   "set a model API key such as ANTHROPIC_API_KEY, OPENAI_API_KEY, or GEMINI_API_KEY",
 		CredFiles:   []string{".aider.conf.yml"},
@@ -157,7 +161,9 @@ var agentCatalog = []AgentCatalogEntry{
 	{
 		Name: AgentGoose, Executable: "goose", Vendor: "Block / AAIF (open source)", FreeTier: true,
 		InstallHint: "curl -fsSL https://github.com/aaif-goose/goose/releases/download/stable/download_cli.sh | bash",
-		UnixInstall: "CONFIGURE=false curl -fsSL https://github.com/aaif-goose/goose/releases/download/stable/download_cli.sh | bash",
+		// CONFIGURE must reach the bash that runs the script (not curl),
+		// otherwise the installer opens an interactive /dev/tty configurator.
+		UnixInstall: "curl -fsSL https://github.com/aaif-goose/goose/releases/download/stable/download_cli.sh | CONFIGURE=false bash",
 		LoginArgs:   []string{"configure"},
 		LoginHint:   "run `goose configure` to set a provider and API key",
 		CredFiles:   []string{".config/goose/config.yaml"},
