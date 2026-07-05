@@ -212,6 +212,28 @@ council doctor --json --ping   # definitive: sends one tiny prompt through each 
 
 ---
 
+## Interactive Mode
+
+Run `council` with no arguments in a terminal and it opens a small REPL:
+
+```
+🏛  AI Council v1.4.0 — interactive mode
+council> should we shard the orders table or move to a queue?
+   ... agents plan and cross-critique ...
+feedback> what about operational cost of each option?
+   ... a --continue round in the same session ...
+feedback>            (blank line finishes)
+```
+
+Piped stdin works too — the input becomes the task:
+
+```bash
+git diff | council            # council reviews your working-tree diff
+echo "review api.go" | council
+```
+
+---
+
 ## Basic Usage
 
 **Run Council on a task:**

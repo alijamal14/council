@@ -17,7 +17,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-var Version = "1.3.2"
+var Version = "1.4.0"
 
 var (
 	commit = "none"
@@ -407,10 +407,15 @@ func resolveRepoRoot(cfg Config) (string, error) {
 }
 
 func run(ctx context.Context, cfg Config) int {
-	// The buffering warning only matters for real council sessions — utility
-	// subcommands (doctor, setup, login, models, update) finish in seconds.
+	// The buffering warning only matters for real council sessions run by AI
+	// callers (whose shell tools buffer output). Humans at a terminal get a
+	// one-line header; utility subcommands get nothing.
 	if cfg.Subcommand == "" {
-		printInvocationGuide(detectCaller())
+		if isTerminalFile(os.Stdout) {
+			printCompactHeader()
+		} else {
+			printInvocationGuide(detectCaller())
+		}
 	}
 
 	cfg.IsTerminal = os.Getenv("TERM") != "" &&
@@ -471,6 +476,26 @@ func run(ctx context.Context, cfg Config) int {
 		return handleModels(ctx, cfg)
 	case "update":
 		return handleUpdate(ctx, cfg, cfg.UpdateCheck, cfg.UpdateQuiet)
+	}
+
+	// Acquire the task BEFORE any agent detection or pinging — a missing task
+	// must never cost the user a 45-second ping round. At a terminal this is
+	// the interactive mode; piped stdin (e.g. `git diff | council`) also works.
+	interactive := false
+	if cfg.ContinueDir == "" && cfg.Task == "" {
+		if isTerminalFile(os.Stdin) && isTerminalFile(os.Stdout) {
+			task, ok := promptForTask()
+			if !ok {
+				return 0
+			}
+			cfg.Task = task
+			interactive = true
+		} else if piped := readPipedTask(); piped != "" {
+			cfg.Task = piped
+		} else {
+			fmt.Fprintf(os.Stderr, "Usage: %s \"Task description\"\nRun `council help` for setup, login, models, and update commands.\n", os.Args[0])
+			return 2
+		}
 	}
 
 	os.MkdirAll(cfg.CouncilRunsDir, 0755)
@@ -537,7 +562,6 @@ func run(ctx context.Context, cfg Config) int {
 		fmt.Println("    Fix: council update (refresh the CLI) or council login " + name + " (re-auth), then council doctor --ping")
 		log.Log("QUARANTINE", name+" auto-disabled after repeated ping failures")
 	}
-	maybeNudgeUpdate(st)
 	st.save()
 
 	if len(detectedAgents) == 0 {
@@ -548,6 +572,33 @@ func run(ctx context.Context, cfg Config) int {
 		log.Log("ABORT", "No agents passed pre-flight ping")
 		return 2
 	}
+
+	// Interactive mode loops: each pass is one full plan+critique round, and
+	// the feedback> prompt turns the next pass into a --continue of the same
+	// session. Non-interactive callers exit after one pass as before.
+	for {
+		exitCode := runSessionOnce(sigCtx, &cfg, detectedAgents, log, interactive)
+		if !interactive || exitCode == 2 {
+			maybeAutoUpdate()
+			maybeNudgeUpdate(st)
+			return exitCode
+		}
+		feedback, ok := promptFeedback()
+		if !ok {
+			maybeAutoUpdate()
+			return exitCode
+		}
+		cfg.ContinueFeedback = feedback
+	}
+}
+
+// runSessionOnce executes one plan+critique round. On the first pass
+// cfg.ContinueDir selects new-vs-resumed session; afterwards it always points
+// at the session directory so interactive feedback rounds accumulate there.
+func runSessionOnce(sigCtx context.Context, cfg *Config, detectedAgents AgentSet, log *AuditLogger, interactive bool) int {
+	sessionStart := time.Now()
+	repoRoot := cfg.RepoRoot
+	var err error
 
 	var runDir, iterDir string
 	var taskContext string
@@ -636,7 +687,7 @@ func run(ctx context.Context, cfg Config) int {
 
 	planPrompt := fmt.Sprintf("ROLE: Planner. CONTEXT: %s. OBJECTIVE: %s. TEXT-ONLY OUTPUT ONLY.", taskContext, promptTask)
 	_, hasCopilot := detectedAgents[AgentCopilot]
-	results := runAgentsParallel(sigCtx, detectedAgents, planPrompt, iterDir, "plan", cfg, log)
+	results := runAgentsParallel(sigCtx, detectedAgents, planPrompt, iterDir, "plan", *cfg, log)
 
 	validPlans := 0
 	for _, r := range results {
@@ -703,14 +754,14 @@ func run(ctx context.Context, cfg Config) int {
 			flush()
 
 			// Run agents in parallel, giving the devilPrompt to the selected agent
-			results = runAgentsParallelWithDevil(sigCtx, detectedAgents, critiquePrompt, devilPrompt, dvAgent, iterDir, "critique", cfg, log)
+			results = runAgentsParallelWithDevil(sigCtx, detectedAgents, critiquePrompt, devilPrompt, dvAgent, iterDir, "critique", *cfg, log)
 		} else {
 			fmt.Println("ℹ️  Single agent mode — generating self-critique")
 			flush()
 			for name, resolved := range detectedAgents {
 				lowerName := strings.ToLower(string(name))
 				outFile := filepath.Join(iterDir, "critique."+lowerName+".txt")
-				runAgent(sigCtx, name, resolved, detectedAgents[AgentCopilot], critiquePrompt, outFile, cfg, log, hasCopilot)
+				runAgent(sigCtx, name, resolved, detectedAgents[AgentCopilot], critiquePrompt, outFile, *cfg, log, hasCopilot)
 				break
 			}
 		}
@@ -725,9 +776,10 @@ func run(ctx context.Context, cfg Config) int {
 	fmt.Printf("📂 Results: %s\n", iterDir)
 
 	printSummary(iterDir, results)
+	fmt.Println(dim(fmt.Sprintf("⏱  %s total", time.Since(sessionStart).Round(time.Second))))
 
 	// Advisory only — council never changes models on its own.
-	printModelAdvisory(detectedAgents, cfg, promptTask)
+	printModelAdvisory(detectedAgents, *cfg, promptTask)
 
 	log.Log("END", fmt.Sprintf("Council session complete. Plans: %d/%d", validPlans, len(detectedAgents)))
 
@@ -737,12 +789,12 @@ func run(ctx context.Context, cfg Config) int {
 		log.Log("STATUS", "COMPLETE: All agents produced valid output.")
 	}
 
+	// Interactive feedback rounds resume this same session directory.
+	cfg.ContinueDir = runDir
+
 	if validPlans == 0 {
 		return 2
 	}
-	// Opt-in background agent refresh (council config set COUNCIL_AUTO_UPDATE 1):
-	// runs at most daily, after results are delivered, never blocking the user.
-	maybeAutoUpdate()
 	if validPlans < len(detectedAgents) {
 		return 1
 	}

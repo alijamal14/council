@@ -641,9 +641,9 @@ func pingAgentsParallel(ctx context.Context, agents AgentSet, pingTimeoutSecs in
 		}
 
 		if r.ok {
-			fmt.Printf("  %s %-10s (%s)%s\n", status, r.agent, r.elapsed.Round(time.Millisecond), suffix)
+			fmt.Printf("  %s %-12s %s%s\n", green(status), r.agent, dim(r.elapsed.Round(time.Millisecond).String()), suffix)
 		} else {
-			fmt.Printf("  ❌ %-10s (%s — skipping)\n", r.agent, r.reason)
+			fmt.Printf("  %s %-12s %s\n", red("✖"), r.agent, shortPingReason(r.agent, r.reason))
 		}
 		flush()
 	}

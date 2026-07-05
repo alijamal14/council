@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -186,6 +187,40 @@ func TestCatalogV2Coverage(t *testing.T) {
 	}
 	if freeCount < 4 {
 		t.Errorf("expected at least 4 free-tier agents, got %d", freeCount)
+	}
+}
+
+func TestSemverNewer(t *testing.T) {
+	cases := []struct {
+		a, b string
+		want bool
+	}{
+		{"1.4.0", "1.3.2", true},
+		{"1.3.2", "1.4.0", false},
+		{"1.3.2", "1.3.2", false},
+		{"2.0.0", "1.9.9", true},
+		{"1.10.0", "1.9.0", true}, // numeric, not lexicographic
+	}
+	for _, c := range cases {
+		if got := semverNewer(c.a, c.b); got != c.want {
+			t.Errorf("semverNewer(%q,%q) = %v, want %v", c.a, c.b, got, c.want)
+		}
+	}
+}
+
+func TestShortPingReasonAuthHint(t *testing.T) {
+	reason := "err: exit status 41 | stderr: Please set an Auth method in your settings.json\nsecond line"
+	out := shortPingReason(AgentGemini, reason)
+	if !strings.Contains(out, "council login gemini") {
+		t.Errorf("auth-smelling failure should point at council login, got %q", out)
+	}
+	if strings.Contains(out, "second line") {
+		t.Errorf("reason should be condensed to one line, got %q", out)
+	}
+
+	plain := shortPingReason(AgentCodex, "err: context deadline exceeded")
+	if strings.Contains(plain, "council login") {
+		t.Errorf("non-auth failure must not suggest login, got %q", plain)
 	}
 }
 
