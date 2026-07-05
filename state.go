@@ -133,5 +133,6 @@ func maybeNudgeUpdate(st *CouncilState) {
 		return
 	}
 	st.LastUpdateNudge = time.Now()
+	st.save() // persist immediately — callers may not save again after this
 	fmt.Println(dim("💡 Agent CLIs haven't been update-checked in over a week — run: council update"))
 }
