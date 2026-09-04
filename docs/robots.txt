@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://alijamal14.github.io/council/sitemap.xml
+Sitemap: https://ali.mk313.com/council/sitemap.xml

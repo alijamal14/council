@@ -4,9 +4,9 @@
 [![Release](https://img.shields.io/github/v/release/alijamal14/council)](https://github.com/alijamal14/council/releases/latest)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/alijamal14/council)](https://golang.org/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Website](https://img.shields.io/badge/website-alijamal14.github.io%2Fcouncil-3ecf8e)](https://alijamal14.github.io/council/)
+[![Website](https://img.shields.io/badge/website-ali.mk313.com%2Fcouncil-3ecf8e)](https://ali.mk313.com/council/)
 
-**Site:** https://alijamal14.github.io/council/
+**Site:** https://ali.mk313.com/council/
 
 **Get a second (and third, and fourth) opinion from your AI coding tools — in one command.**
 

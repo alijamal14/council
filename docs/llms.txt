@@ -20,7 +20,7 @@ Key facts:
 
 ## Documentation
 
-- [Website](https://alijamal14.github.io/council/): Public landing page with FAQ (SEO/AEO), install, and product overview
+- [Website](https://ali.mk313.com/council/): Public landing page with FAQ (SEO/AEO), install, and product overview
 - [README](https://github.com/alijamal14/council/blob/main/README.md): Installation, quick start, CLI reference, configuration, FAQ
 - [BUILD](https://github.com/alijamal14/council/blob/main/BUILD.md): Architecture, agent roster, release workflow
 - [CONTRIBUTING](https://github.com/alijamal14/council/blob/main/CONTRIBUTING.md): Development environment and contribution guide
