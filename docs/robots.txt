@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://alijamal14.github.io/council/sitemap.xml

@@ -2,7 +2,7 @@
 
 # 💡 AI Council Orchestrator Wrapper
 # This script is a wrapper for the native Go binary.
-# Primary Source: ./council.go
+# Primary Source: tools/council/council.go
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BINARY="$SCRIPT_DIR/council"

@@ -4,6 +4,9 @@
 [![Release](https://img.shields.io/github/v/release/alijamal14/council)](https://github.com/alijamal14/council/releases/latest)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/alijamal14/council)](https://golang.org/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Website](https://img.shields.io/badge/website-alijamal14.github.io%2Fcouncil-3ecf8e)](https://alijamal14.github.io/council/)
+
+**Site:** https://alijamal14.github.io/council/
 
 **Get a second (and third, and fourth) opinion from your AI coding tools — in one command.**
 
@@ -82,17 +85,24 @@ Council can use the following 12 CLIs when they are installed and authenticated.
 
 | Agent | Executable | Vendor | Install |
 |-------|------------|--------|---------|
-| Claude Code | `claude` | Anthropic | `npm i -g @anthropic-ai/claude-code` |
-| Gemini CLI | `gemini` | Google | `npm i -g @google/gemini-cli` |
-| Codex | `codex` | OpenAI | `npm i -g @openai/codex` |
-| Copilot CLI | `copilot` | GitHub | `npm i -g @github/copilot` |
+| Claude Code | `claude` | Anthropic | 
+pm i -g @anthropic-ai/claude-code` |
+| Gemini CLI | `gemini` | Google | 
+pm i -g @google/gemini-cli` |
+| Codex | `codex` | OpenAI | 
+pm i -g @openai/codex` |
+| Copilot CLI | `copilot` | GitHub | 
+pm i -g @github/copilot` |
 | Cursor | `cursor-agent` or `agent` | Cursor | [cursor.com/cli](https://cursor.com/cli) |
 | Antigravity | `agy` | Google | [antigravity.google](https://antigravity.google) |
 | Aider | `aider` | open source | `pip install aider-install && aider-install` |
-| OpenCode | `opencode` | open source | `npm i -g opencode-ai` |
-| Qwen Code | `qwen` | Alibaba (open source) | `npm i -g @qwen-code/qwen-code` |
+| OpenCode | `opencode` | open source | 
+pm i -g opencode-ai` |
+| Qwen Code | `qwen` | Alibaba (open source) | 
+pm i -g @qwen-code/qwen-code` |
 | Goose | `goose` | Block (open source) | [goose install docs](https://block.github.io/goose/docs/getting-started/installation) |
-| Amp | `amp` | Sourcegraph | `npm i -g @sourcegraph/amp` |
+| Amp | `amp` | Sourcegraph | 
+pm i -g @sourcegraph/amp` |
 | Droid | `droid` | Factory | [docs.factory.ai/cli](https://docs.factory.ai/cli) |
 
 Run `council setup` to see which are missing on your machine, or `council setup --apply` to install every agent that has a package-manager installer.
@@ -206,7 +216,8 @@ council doctor --json --ping   # definitive: sends one tiny prompt through each 
 }
 ```
 
-- `auth` is `yes`, `no`, `likely` (credentials found on disk/env), or `unknown`. Only `--ping` gives a definitive answer, because most vendor CLIs expose no offline auth query.
+- `auth` is `yes`, 
+o`, `likely` (credentials found on disk/env), or `unknown`. Only `--ping` gives a definitive answer, because most vendor CLIs expose no offline auth query.
 - `limits_url` / `limits_hint` tell you (or your orchestrating AI) where each vendor documents plan quotas — useful for deciding whether the council can afford another round.
 - Exit code is `1` when zero agents are installed, so the command doubles as a CI gate.
 
@@ -389,8 +400,7 @@ council config list                              # see everything (env overrides
 
 ## Models: defaults, overrides, and the advisor
 
-Council **never overrides an agent's model on its own** — each vendor's default is the
-standard, tuned for general use. Three tools sit on top of that:
+Council **does not casually override** an agent's model — each vendor's default (or the user's `COUNCIL_<AGENT>_MODEL` / `~/.codex/config.toml`) is preferred. Three tools sit on top of that:
 
 - **`council models`** — one table: every agent's active model (override or vendor default),
   example fast/deep model names, and the exact command to change each.
@@ -400,6 +410,11 @@ standard, tuned for general use. Three tools sit on top of that:
   the pairing looks off: a heavy model (opus/pro-class) on a trivial task is flagged as token
   overkill with a cheaper suggestion, and a light model (haiku/flash-class) on a deep
   architecture task gets a nudge toward a stronger one. Advice only — behavior never changes.
+
+**Exception — Codex mid-run heal:** if Codex fails because the configured model needs a newer
+CLI (or ChatGPT auth rejects the model id), Council upgrades Codex once, re-points at the newest
+binary (npm vs WinGet), and retries. Optional `COUNCIL_CODEX_FALLBACK_MODEL` forces a `--model`
+override after a failed heal. See `context/CLI_COUNCIL_SOP.md` (Mid-run Codex CLI heal).
 
 ## Self-maintaining roster
 
@@ -412,6 +427,8 @@ standard, tuned for general use. Three tools sit on top of that:
   install, obsolete binary, expired auth) is auto-disabled with a notice, so it stops costing a
   45-second timeout every run. It is re-enabled automatically the moment it passes a ping again
   (`council doctor --ping`), after a `council update`, or by naming it explicitly in `--agents`.
+- **Antigravity argv:** unrestricted mode uses `--print=<prompt> --dangerously-skip-permissions`.
+  Bare `--print` immediately before the skip flag makes `agy` treat the flag as the prompt.
 - A gentle once-a-week reminder suggests `council update` if no check has happened; there is no
   other nagging.
 
@@ -419,11 +436,21 @@ standard, tuned for general use. Three tools sit on top of that:
 
 ## Troubleshooting
 
-**No agents found:**
-Confirm the relevant CLI executables are installed and on your `PATH`. Run `council doctor` for a diagnostic.
+**No agents found / agent silently missing from a run:**
+Confirm the CLI is on `PATH` (`where claude` / `which claude`). Run `council doctor` — `installed: false` means discovery failed, not quarantine. On Windows, WinGet may keep the package under `...\WinGet\Packages\` while deleting `...\WinGet\Links\<agent>.exe`; recreate that Links shim (or use the npm global shim) so LookPath succeeds.
 
 **An agent is found but fails:**
 Run that vendor CLI directly and confirm authentication is current (e.g., `claude --version`, then `claude login`).
+
+**Codex: model requires a newer version of Codex:**
+Your `~/.codex/config.toml` model is ahead of the CLI on `PATH` (common when WinGet trails npm). Newer Council builds self-heal mid-run (upgrade + pick newest binary). Manually: 
+pm install -g @openai/codex@latest`, `winget upgrade OpenAI.Codex`, or ensure `%APPDATA%\npm` precedes the WinGet Links directory on `PATH`. Check `run_*/audit.jsonl` for `UPGRADE_OK`.
+
+**Antigravity prints “--print took --dangerously-skip-permissions as its prompt”:**
+Upgrade Council. Unrestricted spawn must bind the prompt as `--print=<prompt>`.
+
+**Claude present on disk but absent from council roster:**
+Not quarantine — PATH. Verify `council doctor --json` shows Claude `installed: true` and a `path`. If the binary only exists under WinGet Packages, hardlink/symlink it into WinGet Links (already on PATH) or install `@anthropic-ai/claude-code` via npm.
 
 **Remote delegation fails:**
 Verify SSH access manually first:

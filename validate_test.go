@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -46,6 +48,76 @@ func TestIsValidOutput_SubstantialAnswerDiscussingErrors(t *testing.T) {
 	if !isValidOutput(file) {
 		t.Error("substantial answer mentioning HTTP 429 must be valid")
 	}
+}
+
+// A long Codex banner followed by a trailing "requires a newer version" API
+// error must be invalid — the mismatch lands after substantial preamble.
+func TestIsValidOutput_CodexNeedsNewerCLI(t *testing.T) {
+	tmpdir := t.TempDir()
+	file := filepath.Join(tmpdir, "plan.codex.txt")
+	banner := "OpenAI Codex v0.142.5\n--------\nworkdir: C:\\Users\\ali\\ai\nmodel: gpt-5.6-sol\n"
+	for len(banner) < 1100 {
+		banner += "provider: openai\napproval: never\nsandbox: danger-full-access\n"
+	}
+	banner += `ERROR: {"type":"error","status":400,"error":{"type":"invalid_request_error","message":"The 'gpt-5.6-sol' model requires a newer version of Codex. Please upgrade to the latest app or CLI and try again."}}`
+	os.WriteFile(file, []byte(banner), 0644)
+	if isValidOutput(file) {
+		t.Error("Codex CLI-too-old error after a long banner must be invalid")
+	}
+	if !isCLIVersionMismatch(banner) {
+		t.Error("isCLIVersionMismatch should detect requires-a-newer-version")
+	}
+}
+
+func TestCodexCompatibleFallbackModel(t *testing.T) {
+	t.Setenv("COUNCIL_CODEX_FALLBACK_MODEL", "")
+	if got := codexCompatibleFallbackModel(); got != "" {
+		t.Fatalf("default fallback = %q, want empty (ChatGPT-safe)", got)
+	}
+	t.Setenv("COUNCIL_CODEX_FALLBACK_MODEL", "o4-mini")
+	if got := codexCompatibleFallbackModel(); got != "o4-mini" {
+		t.Fatalf("env fallback = %q, want o4-mini", got)
+	}
+}
+
+func TestVersionSemver(t *testing.T) {
+	if got := versionSemver("codex-cli 0.153.3"); got != "0.153.3" {
+		t.Fatalf("got %q", got)
+	}
+	if !semverNewer(versionSemver("codex-cli 0.153.3"), versionSemver("codex-cli 0.142.5")) {
+		t.Fatal("0.153.3 should be newer than 0.142.5")
+	}
+}
+
+func TestRefreshResolvedAgentPathPrefersNewer(t *testing.T) {
+	tmpdir := t.TempDir()
+	old := createMockAgent(t, tmpdir, "codex-old", "echo codex-cli 0.142.5")
+	newerDir := filepath.Join(tmpdir, "npm")
+	_ = os.MkdirAll(newerDir, 0755)
+	// Put a newer stub where refreshResolvedAgentPath looks on Windows (APPDATA/npm)
+	// and via LookPath by putting tmpdir first on PATH.
+	var newer string
+	if runtime.GOOS == "windows" {
+		newer = filepath.Join(newerDir, "codex.cmd")
+		_ = os.WriteFile(newer, []byte("@echo off\r\necho codex-cli 0.153.3\r\n"), 0755)
+		t.Setenv("APPDATA", tmpdir)
+		_ = os.MkdirAll(filepath.Join(tmpdir, "npm"), 0755)
+		_ = os.WriteFile(filepath.Join(tmpdir, "npm", "codex.cmd"), []byte("@echo off\r\necho codex-cli 0.153.3\r\n"), 0755)
+	} else {
+		newer = filepath.Join(tmpdir, "codex-new")
+		_ = os.WriteFile(newer, []byte("#!/bin/sh\necho codex-cli 0.153.3\n"), 0755)
+		t.Setenv("HOME", tmpdir)
+		_ = os.MkdirAll(filepath.Join(tmpdir, ".local", "bin"), 0755)
+		_ = os.WriteFile(filepath.Join(tmpdir, ".local", "bin", "codex"), []byte("#!/bin/sh\necho codex-cli 0.153.3\n"), 0755)
+	}
+
+	resolved := &ResolvedAgent{Name: AgentCodex, Path: old, RunnerType: "local"}
+	refreshResolvedAgentPath(context.Background(), AgentCodex, resolved)
+	ver := probeVersion(context.Background(), catalogEntry(AgentCodex), resolved.Path)
+	if !semverNewer(versionSemver(ver), "0.142.5") {
+		t.Fatalf("expected refresh to pick newer binary, path=%s ver=%s", resolved.Path, ver)
+	}
+	_ = newer
 }
 
 // A long output is still invalid when the error appears at the start (real CLI

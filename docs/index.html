@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Council — Multi-agent consensus CLI for Claude, Gemini, Codex &amp; more</title>
+  <meta name="description" content="AI Council is a free open-source CLI that runs Claude Code, Gemini, Codex, Copilot, Cursor, and other AI coding agents in parallel on one task — plans, critiques, Devil’s Advocate, full audit trail. No API keys. macOS, Linux, Windows.">
+  <meta name="keywords" content="AI Council, multi-agent CLI, Claude Code, Gemini CLI, OpenAI Codex, GitHub Copilot, Cursor agent, AI consensus, code review agents">
+  <meta name="author" content="Ali Jamal">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <link rel="canonical" href="https://alijamal14.github.io/council/">
+  <link rel="alternate" type="text/plain" title="llms.txt" href="https://alijamal14.github.io/council/llms.txt">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="AI Council">
+  <meta property="og:title" content="AI Council — Multi-agent consensus CLI">
+  <meta property="og:description" content="Run multiple AI coding CLIs in parallel on one task. Independent plans, cross-critique, Devil’s Advocate, auditable artifacts. Free. No API keys.">
+  <meta property="og:url" content="https://alijamal14.github.io/council/">
+  <meta property="og:image" content="https://alijamal14.github.io/council/og.svg">
+  <meta property="og:locale" content="en_US">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="AI Council — Multi-agent consensus CLI">
+  <meta name="twitter:description" content="Orchestrate Claude, Gemini, Codex, Copilot, Cursor, and more in one command. Open source. Local. Auditable.">
+  <meta name="twitter:image" content="https://alijamal14.github.io/council/og.svg">
+
+  <meta name="theme-color" content="#0b1210">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Mono:wght@400;500&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://alijamal14.github.io/council/#website",
+        "url": "https://alijamal14.github.io/council/",
+        "name": "AI Council",
+        "description": "Multi-agent AI consensus CLI for developers and coding agents.",
+        "publisher": { "@id": "https://alijamal14.github.io/council/#org" },
+        "inLanguage": "en"
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://alijamal14.github.io/council/#org",
+        "name": "AI Council",
+        "url": "https://github.com/alijamal14/council",
+        "logo": "https://alijamal14.github.io/council/favicon.svg"
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://alijamal14.github.io/council/#app",
+        "name": "AI Council",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "macOS, Linux, Windows",
+        "softwareVersion": "1.4.0",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "license": "https://www.apache.org/licenses/LICENSE-2.0",
+        "url": "https://alijamal14.github.io/council/",
+        "downloadUrl": "https://github.com/alijamal14/council/releases/latest",
+        "codeRepository": "https://github.com/alijamal14/council",
+        "description": "Free open-source CLI that runs multiple AI coding agent CLIs in parallel on one task, collects plans, runs critiques with a Devil's Advocate, and saves an audit trail. No API keys collected.",
+        "featureList": [
+          "Parallel multi-agent planning",
+          "Critique pass with Devil's Advocate",
+          "Works with Claude, Gemini, Codex, Copilot, Cursor, Antigravity, and more",
+          "Local orchestration — no hosted API keys",
+          "Auditable plan and critique artifacts"
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://alijamal14.github.io/council/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is AI Council?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "AI Council is a free, open-source command-line tool that orchestrates multiple AI coding assistants (Claude Code, Gemini CLI, OpenAI Codex, GitHub Copilot, Cursor, Antigravity, Aider, OpenCode, Qwen, Goose, Amp, Droid) in parallel on one task, then has them critique each other's plans. It is not a hosted model service and does not collect API keys."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does AI Council require API keys?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Council never asks for or stores API keys. It shells out to vendor CLIs you have already installed and authenticated, such as via claude login or gemini auth login."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I install AI Council?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "On macOS/Linux: brew install alijamal14/tap/council. On Windows with Scoop: scoop bucket add alijamal14 https://github.com/alijamal14/scoop-bucket then scoop install council. Or run go install github.com/alijamal14/council@latest, or use the install scripts from the GitHub repository."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Which AI agents does Council support?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Council discovers and runs up to twelve agent CLIs: Gemini, Codex, Claude, Copilot, Cursor, Antigravity (agy), Aider, OpenCode, Qwen, Goose, Amp, and Factory Droid. You need at least one installed and signed in; the rest are skipped automatically."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Where do Council results go?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Each session writes to council_runs/run_<timestamp>/ with plan.<agent>.txt, critique.<agent>.txt, label_map.json, brief.txt, and audit.jsonl for a durable audit trail."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="top">
+    <a class="brand" href="./">Council</a>
+    <nav aria-label="Primary">
+      <a href="#install">Install</a>
+      <a href="#how">How it works</a>
+      <a href="#faq">FAQ</a>
+      <a href="https://github.com/alijamal14/council" rel="noopener">GitHub</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="brand-mark">Council</p>
+        <h1 id="hero-title">Second opinions from every AI CLI you already trust.</h1>
+        <p class="lede">One command runs Claude, Gemini, Codex, Copilot, Cursor, and more in parallel — plans, cross-critique, Devil’s Advocate, full audit trail. Local. Free. No API keys.</p>
+        <div class="cta">
+          <a class="btn primary" href="#install">Install Council</a>
+          <a class="btn ghost" href="https://github.com/alijamal14/council" rel="noopener">View source</a>
+        </div>
+      </div>
+      <div class="hero-stage" aria-hidden="true">
+        <pre class="terminal"><code><span class="dim">$</span> council "Should we migrate REST to gRPC?"
+<span class="ok">✅</span> Claude · <span class="ok">✅</span> Codex · <span class="ok">✅</span> Gemini · <span class="ok">✅</span> Cursor
+<span class="phase">— Phase 1: Planning —</span>
+<span class="dim">plan.claude.txt · plan.codex.txt · plan.gemini.txt</span>
+<span class="phase">— Phase 2: Critique —</span>
+<span class="warn">🎭</span> Codex assigned Devil’s Advocate
+<span class="ok">Council adjourned</span> → council_runs/run_…/</code></pre>
+      </div>
+    </section>
+
+    <section id="how" class="band">
+      <h2>What Council does</h2>
+      <p class="section-lede">Discover agents on your PATH, run them concurrently on one task, collect independent plans, then challenge the result with a critique pass — including a rotating Devil’s Advocate.</p>
+      <ol class="steps">
+        <li><strong>Discover</strong> installed AI CLIs and skip the rest.</li>
+        <li><strong>Plan</strong> in parallel — each agent writes its own plan artifact.</li>
+        <li><strong>Critique</strong> anonymized peer plans; one agent plays Devil’s Advocate.</li>
+        <li><strong>Audit</strong> everything under <code>council_runs/</code> for humans and other agents.</li>
+      </ol>
+    </section>
+
+    <section class="band agents" aria-labelledby="agents-title">
+      <h2 id="agents-title">Works with the CLIs you already use</h2>
+      <p class="section-lede">Up to twelve agents. One installed and signed-in CLI is enough to start.</p>
+      <ul class="agent-list">
+        <li>Claude Code</li><li>Gemini CLI</li><li>OpenAI Codex</li><li>GitHub Copilot</li>
+        <li>Cursor</li><li>Antigravity</li><li>Aider</li><li>OpenCode</li>
+        <li>Qwen</li><li>Goose</li><li>Amp</li><li>Factory Droid</li>
+      </ul>
+    </section>
+
+    <section id="install" class="band install">
+      <h2>Install in under a minute</h2>
+      <div class="install-grid">
+        <figure>
+          <figcaption>macOS / Linux</figcaption>
+          <pre><code>brew install alijamal14/tap/council</code></pre>
+        </figure>
+        <figure>
+          <figcaption>Windows (Scoop)</figcaption>
+          <pre><code>scoop bucket add alijamal14 https://github.com/alijamal14/scoop-bucket
+scoop install council</code></pre>
+        </figure>
+        <figure>
+          <figcaption>Go</figcaption>
+          <pre><code>go install github.com/alijamal14/council@latest</code></pre>
+        </figure>
+      </div>
+      <pre class="follow"><code>council setup --apply
+council login
+council "Design a migration plan for the auth service."</code></pre>
+      <p class="fine">Verify with <code>council doctor</code>. Results land in <code>council_runs/run_&lt;timestamp&gt;/</code>.</p>
+    </section>
+
+    <section id="faq" class="band faq" aria-labelledby="faq-title">
+      <h2 id="faq-title">Frequently asked questions</h2>
+      <dl>
+        <div>
+          <dt>What is AI Council?</dt>
+          <dd>A free, open-source CLI that orchestrates multiple AI coding assistants in parallel on one task, then has them critique each other’s plans. It is not a hosted model and does not collect API keys.</dd>
+        </div>
+        <div>
+          <dt>Does AI Council require API keys?</dt>
+          <dd>No. Council shells out to vendor CLIs you already installed and authenticated (for example <code>claude login</code>).</dd>
+        </div>
+        <div>
+          <dt>How do I install AI Council?</dt>
+          <dd>Use Homebrew, Scoop, <code>go install github.com/alijamal14/council@latest</code>, or the install scripts in the GitHub repository.</dd>
+        </div>
+        <div>
+          <dt>Which AI agents does Council support?</dt>
+          <dd>Up to twelve: Gemini, Codex, Claude, Copilot, Cursor, Antigravity, Aider, OpenCode, Qwen, Goose, Amp, and Factory Droid.</dd>
+        </div>
+        <div>
+          <dt>Where do Council results go?</dt>
+          <dd>Each session writes <code>plan.*.txt</code>, <code>critique.*.txt</code>, <code>label_map.json</code>, and <code>audit.jsonl</code> under <code>council_runs/run_&lt;timestamp&gt;/</code>.</dd>
+        </div>
+      </dl>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p><strong>Council</strong> · Apache-2.0 · <a href="https://github.com/alijamal14/council" rel="noopener">GitHub</a> · <a href="https://github.com/alijamal14/council/releases/latest" rel="noopener">Releases</a> · <a href="./llms.txt">llms.txt</a></p>
+  </footer>
+</body>
+</html>

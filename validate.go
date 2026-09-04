@@ -56,6 +56,12 @@ func isValidOutput(outFile string) bool {
 		return false
 	}
 
+	// CLI/model version mismatches often print a banner first, then fail — scan
+	// the full body so a long preamble cannot hide the API error.
+	if isCLIVersionMismatch(content) {
+		return false
+	}
+
 	// Short outputs get a full scan; substantial answers only reject on
 	// patterns near the start (where CLI startup/auth/transport errors land).
 	const substantialOutput = 1000
@@ -85,6 +91,25 @@ func readHead(outFile string, n int) string {
 		data = data[:n]
 	}
 	return string(data)
+}
+
+// isCLIVersionMismatch reports vendor errors where the installed CLI is too old
+// for the selected model (e.g. Codex rejecting gpt-5.6-sol). These usually land
+// after a version banner, so callers must scan the full output — not only the head.
+func isCLIVersionMismatch(content string) bool {
+	lower := strings.ToLower(content)
+	if strings.Contains(lower, "requires a newer version of") {
+		return true
+	}
+	if strings.Contains(lower, "please upgrade to the latest") &&
+		(strings.Contains(lower, "model") || strings.Contains(lower, "codex") || strings.Contains(lower, "cli")) {
+		return true
+	}
+	// ChatGPT-linked Codex rejects some --model overrides with a trailing API error.
+	if strings.Contains(lower, "is not supported when using codex with a chatgpt account") {
+		return true
+	}
+	return false
 }
 
 // containsErrorPattern checks if content matches any error pattern (case-insensitive)

@@ -8,7 +8,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -227,4 +229,193 @@ func maybeAutoUpdate() {
 	// Detach: the child outlives this process; Release avoids a zombie handle.
 	_ = cmd.Process.Release()
 	logFile.Close()
+}
+
+// agentUpgradeMu serializes mid-run CLI upgrades so parallel agents do not race
+// npm/winget installs for the same binary.
+var agentUpgradeMu sync.Mutex
+
+// upgradeAgentCLIFn is the mid-run upgrade hook; tests may replace it.
+var upgradeAgentCLIFn = upgradeAgentCLI
+
+// upgradeAgentCLI upgrades a single installed agent through its catalog channel
+// (same path as `council update`). Returns true when the upgrade command exits 0.
+func upgradeAgentCLI(ctx context.Context, name AgentName, resolved *ResolvedAgent, log *AuditLogger) bool {
+	if resolved == nil || resolved.Path == "" {
+		return false
+	}
+	entry := catalogEntry(name)
+	argv := updateArgv(entry, resolved.Path)
+	if argv == nil {
+		if log != nil {
+			log.LogAgent("UPGRADE_SKIP", fmt.Sprintf("%s has no automated updater", name), string(name), 0)
+		}
+		return false
+	}
+
+	agentUpgradeMu.Lock()
+	defer agentUpgradeMu.Unlock()
+
+	before := probeVersion(ctx, entry, resolved.Path)
+	fmt.Printf("🔄 %s CLI may be too old for its model — upgrading (%s)...\n", name, strings.Join(argv, " "))
+	flush()
+	if log != nil {
+		log.LogAgent("UPGRADE_START", fmt.Sprintf("%s upgrade: %s (was %s)", name, strings.Join(argv, " "), before), string(name), 0)
+	}
+
+	updCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	cmd := exec.CommandContext(updCtx, argv[0], argv[1:]...)
+	out, err := cmd.CombinedOutput()
+	cancel()
+
+	// On Windows, Codex is often the WinGet shim while npm installs a newer
+	// binary elsewhere — also try winget upgrade, then re-point at the newest.
+	if name == AgentCodex && runtime.GOOS == "windows" {
+		wCtx, wCancel := context.WithTimeout(ctx, 5*time.Minute)
+		wCmd := exec.CommandContext(wCtx, "winget", "upgrade", "--id", "OpenAI.Codex", "-e",
+			"--accept-package-agreements", "--accept-source-agreements")
+		_, _ = wCmd.CombinedOutput()
+		wCancel()
+	}
+
+	refreshResolvedAgentPath(ctx, name, resolved)
+	after := probeVersion(ctx, entry, resolved.Path)
+	if err != nil {
+		tail := strings.TrimSpace(string(out))
+		if len(tail) > 300 {
+			tail = tail[len(tail)-300:]
+		}
+		// npm may have succeeded enough to expose a newer binary even if the
+		// primary argv reported an error (e.g. permission noise).
+		if !semverNewer(versionSemver(after), versionSemver(before)) {
+			fmt.Printf("❌ %s upgrade failed: %v\n", name, err)
+			if tail != "" {
+				fmt.Printf("   %s\n", tail)
+			}
+			flush()
+			if log != nil {
+				log.LogAgent("UPGRADE_FAIL", fmt.Sprintf("%s upgrade failed: %v", name, err), string(name), 0)
+			}
+			return false
+		}
+	}
+
+	st := loadState()
+	st.clearQuarantine(name)
+	st.save()
+
+	if after != before {
+		fmt.Printf("✅ %s upgraded: %s → %s (%s)\n", name, before, after, resolved.Path)
+	} else {
+		fmt.Printf("✅ %s upgrade finished (still %s) — will retry / fall back if needed\n", name, after)
+	}
+	flush()
+	if log != nil {
+		log.LogAgent("UPGRADE_OK", fmt.Sprintf("%s upgraded: %s → %s path=%s", name, before, after, resolved.Path), string(name), 0)
+	}
+	return true
+}
+
+// refreshResolvedAgentPath picks the newest installed binary for an agent when
+// multiple install channels coexist (WinGet shim vs npm global, etc.).
+func refreshResolvedAgentPath(ctx context.Context, name AgentName, resolved *ResolvedAgent) {
+	if resolved == nil {
+		return
+	}
+	entry := catalogEntry(name)
+	if entry == nil {
+		return
+	}
+
+	seen := map[string]bool{}
+	var candidates []string
+	add := func(p string) {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			return
+		}
+		if abs, err := filepath.Abs(p); err == nil {
+			p = abs
+		}
+		key := strings.ToLower(p)
+		if seen[key] {
+			return
+		}
+		seen[key] = true
+		candidates = append(candidates, p)
+	}
+
+	add(resolved.Path)
+	if p, err := exec.LookPath(entry.Executable); err == nil {
+		add(p)
+	}
+	if runtime.GOOS == "windows" {
+		if appdata := os.Getenv("APPDATA"); appdata != "" {
+			add(filepath.Join(appdata, "npm", entry.Executable+".cmd"))
+			add(filepath.Join(appdata, "npm", entry.Executable+".exe"))
+			add(filepath.Join(appdata, "npm", entry.Executable))
+		}
+		if local := os.Getenv("LOCALAPPDATA"); local != "" {
+			add(filepath.Join(local, "Microsoft", "WinGet", "Links", entry.Executable+".exe"))
+		}
+	} else if home, err := os.UserHomeDir(); err == nil {
+		add(filepath.Join(home, ".npm-global", "bin", entry.Executable))
+		add(filepath.Join(home, ".local", "bin", entry.Executable))
+	}
+
+	bestPath := resolved.Path
+	bestVer := probeVersion(ctx, entry, resolved.Path)
+	for _, c := range candidates {
+		if _, err := os.Stat(c); err != nil {
+			continue
+		}
+		ver := probeVersion(ctx, entry, c)
+		if semverNewer(versionSemver(ver), versionSemver(bestVer)) {
+			bestPath, bestVer = c, ver
+		}
+	}
+	if bestPath != "" && bestPath != resolved.Path {
+		resolved.Path = bestPath
+	}
+}
+
+// versionSemver extracts the first x.y[.z] token from a CLI version string.
+func versionSemver(s string) string {
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			continue
+		}
+		j := i
+		dots := 0
+		for j < len(s) {
+			c := s[j]
+			if c >= '0' && c <= '9' {
+				j++
+				continue
+			}
+			if c == '.' && dots < 2 && j+1 < len(s) && s[j+1] >= '0' && s[j+1] <= '9' {
+				dots++
+				j++
+				continue
+			}
+			break
+		}
+		if dots >= 1 {
+			return s[i:j]
+		}
+	}
+	return strings.TrimSpace(s)
+}
+
+// codexCompatibleFallbackModel returns a model id to try when the configured
+// Codex model requires a newer CLI and upgrade did not clear the error.
+// Override with COUNCIL_CODEX_FALLBACK_MODEL.
+func codexCompatibleFallbackModel() string {
+	if v := strings.TrimSpace(os.Getenv("COUNCIL_CODEX_FALLBACK_MODEL")); v != "" {
+		return v
+	}
+	// Prefer leaving ChatGPT-linked accounts on whatever the upgraded CLI
+	// defaults to only when an explicit override is set; gpt-5.2 is rejected
+	// by ChatGPT-auth Codex, so default empty disables --model fallback.
+	return ""
 }

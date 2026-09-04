@@ -706,12 +706,31 @@ func runSessionOnce(sigCtx context.Context, cfg *Config, detectedAgents AgentSet
 		fmt.Println(bold(cyan("\n--- Phase 2: Critique ---")))
 		flush()
 
+		entries, _ := os.ReadDir(iterDir)
+		var planContents []string
+		for _, e := range entries {
+			if strings.HasPrefix(e.Name(), "plan.") && strings.HasSuffix(e.Name(), ".txt") {
+				path := filepath.Join(iterDir, e.Name())
+				if isValidOutput(path) {
+					content, err := os.ReadFile(path)
+					if err == nil {
+						planContents = append(planContents, string(content))
+					}
+				}
+			}
+		}
+
+		maxPlansLen := 6000
+		totalLen := 0
+		for _, c := range planContents {
+			totalLen += len(c)
+		}
+
 		allPlans := ""
 		// Sort entries to ensure deterministic labeling and write label_map.json
 		labels := []string{"A", "B", "C", "D", "E", "F", "G", "H"}
 		labelIdx := 0
 		labelMap := make(map[string]string)
-		entries, _ := os.ReadDir(iterDir)
 
 		for _, e := range entries {
 			if strings.HasPrefix(e.Name(), "plan.") && strings.HasSuffix(e.Name(), ".txt") {
@@ -721,10 +740,17 @@ func runSessionOnce(sigCtx context.Context, cfg *Config, detectedAgents AgentSet
 					label := ""
 					if labelIdx < len(labels) {
 						label = labels[labelIdx]
-						labelIdx++
 						labelMap[label] = agentName
-						content, _ := os.ReadFile(path)
-						allPlans += fmt.Sprintf("### Plan %s:\n%s\n\n", label, string(content))
+						contentBytes, _ := os.ReadFile(path)
+						content := string(contentBytes)
+						if totalLen > maxPlansLen && len(planContents) > 0 {
+							limit := maxPlansLen / len(planContents)
+							if len(content) > limit {
+								content = content[:limit] + "\n... [Plan truncated to fit Windows CLI limit]"
+							}
+						}
+						allPlans += fmt.Sprintf("### Plan %s:\n%s\n\n", label, content)
+						labelIdx++
 					}
 				}
 			}

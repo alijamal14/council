@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -86,9 +87,13 @@ func TestCouncilSpawnArgs(t *testing.T) {
 		t.Fatalf("Cursor: got %q want %q", g, cursorWant)
 	}
 
-	agyWant := []string{"--print", "--dangerously-skip-permissions", prompt}
+	agyWant := []string{"--print=" + prompt, "--dangerously-skip-permissions"}
 	if g := councilSpawnArgs(AgentAntigravity, prompt, "", "", true); !reflect.DeepEqual(g, agyWant) {
 		t.Fatalf("Antigravity: got %q want %q", g, agyWant)
+	}
+	agyRestricted := []string{"--print", prompt}
+	if g := councilSpawnArgs(AgentAntigravity, prompt, "", "", false); !reflect.DeepEqual(g, agyRestricted) {
+		t.Fatalf("Antigravity restricted: got %q want %q", g, agyRestricted)
 	}
 
 	surrogateWant := []string{"chat", "--message", prompt, "--model", "gpt-5", "--allow-all"}
@@ -131,6 +136,10 @@ func TestCouncilPingArgs(t *testing.T) {
 	}
 	if g := councilPingArgs(AgentCursor, prompt, "", "", true); !reflect.DeepEqual(g, wantCursor) {
 		t.Fatalf("ping Cursor got %v want %v", g, wantCursor)
+	}
+	wantAgy := []string{"--print=" + prompt, "--dangerously-skip-permissions"}
+	if g := councilPingArgs(AgentAntigravity, prompt, "", "", true); !reflect.DeepEqual(g, wantAgy) {
+		t.Fatalf("ping Antigravity got %v want %v", g, wantAgy)
 	}
 }
 
@@ -202,6 +211,90 @@ exit 0`
 	// Only Copilot should remain
 	if _, ok := healthy[AgentCopilot]; !ok {
 		t.Fatal("pingAgentsParallel() should keep healthy Copilot")
+	}
+}
+
+func TestRunAgentHealsCodexVersionMismatch(t *testing.T) {
+	oldSleep := retrySleep
+	retrySleep = func(time.Duration) {}
+	t.Cleanup(func() { retrySleep = oldSleep })
+
+	tmpdir := t.TempDir()
+	oldPath := os.Getenv("PATH")
+	t.Cleanup(func() { _ = os.Setenv("PATH", oldPath) })
+	_ = os.Setenv("PATH", tmpdir)
+
+	stateFile := filepath.Join(tmpdir, "heal-state.txt")
+	var codexScript string
+	if runtime.GOOS == "windows" {
+		codexScript = fmt.Sprintf(`
+if "%%~1"=="--version" ( echo codex-cli 0.99.0 & exit /b 0 )
+if exist "%s" (
+  echo healed codex output on gpt-5.2
+  exit /b 0
+)
+echo OpenAI Codex banner
+echo ERROR: The 'gpt-5.6-sol' model requires a newer version of Codex. Please upgrade to the latest app or CLI and try again.
+exit /b 1
+`, stateFile)
+	} else {
+		codexScript = fmt.Sprintf(`
+if [ "$1" = "--version" ] || [ "$1" = "-v" ]; then
+  echo "codex-cli 0.99.0"
+  exit 0
+fi
+if [ -f %q ]; then
+  echo "healed codex output on gpt-5.2"
+  exit 0
+fi
+echo "OpenAI Codex banner"
+echo "ERROR: The 'gpt-5.6-sol' model requires a newer version of Codex. Please upgrade to the latest app or CLI and try again."
+exit 1
+`, stateFile)
+	}
+	codexPath := createMockAgent(t, tmpdir, "codex", codexScript)
+
+	upgrades := 0
+	oldUpgrade := upgradeAgentCLIFn
+	upgradeAgentCLIFn = func(ctx context.Context, name AgentName, resolved *ResolvedAgent, log *AuditLogger) bool {
+		upgrades++
+		_ = os.WriteFile(stateFile, []byte("upgraded"), 0644)
+		return true
+	}
+	t.Cleanup(func() { upgradeAgentCLIFn = oldUpgrade })
+
+	log, err := newAuditLogger(
+		"test-heal",
+		[]string{filepath.Join(tmpdir, "audit.md")},
+		[]string{filepath.Join(tmpdir, "audit.jsonl")},
+	)
+	if err != nil {
+		t.Fatalf("newAuditLogger() error = %v", err)
+	}
+	defer log.Close()
+
+	outFile := filepath.Join(tmpdir, "plan.codex.txt")
+	result := runAgent(
+		context.Background(),
+		AgentCodex,
+		&ResolvedAgent{Name: AgentCodex, Path: codexPath, RunnerType: "local"},
+		nil,
+		"test prompt",
+		outFile,
+		Config{AgentRunTimeout: 5},
+		log,
+		false,
+	)
+
+	if upgrades != 1 {
+		t.Fatalf("expected 1 upgrade attempt, got %d", upgrades)
+	}
+	if !result.Success {
+		t.Fatalf("runAgent should succeed after Codex heal, got %#v", result)
+	}
+	content, _ := os.ReadFile(outFile)
+	if !strings.Contains(string(content), "healed codex output") {
+		t.Fatalf("expected healed output, got %q", string(content))
 	}
 }
 
@@ -339,7 +432,7 @@ func createMockAgent(t *testing.T, dir, name, script string) string {
 	var exePath string
 	var content string
 	if runtime.GOOS == "windows" {
-		exePath = filepath.Join(dir, name+".bat")
+		exePath = filepath.Join(dir, name+".cmd")
 		content = "@echo off\r\n" + strings.ReplaceAll(script, "\n", "\r\n") + "\r\n"
 	} else {
 		exePath = filepath.Join(dir, name)

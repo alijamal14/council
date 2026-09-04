@@ -407,11 +407,14 @@ func councilSpawnArgs(logical AgentName, prompt string, copilotSubstituteModel s
 		}
 		args = append(args, "-p", prompt)
 	case AgentAntigravity:
-		args = []string{"--print"}
+		// agy treats the next token after bare --print as the prompt, so
+		// unrestricted must bind the prompt with --print=... and keep
+		// --dangerously-skip-permissions as a separate flag.
 		if unrestricted {
-			args = append(args, "--dangerously-skip-permissions")
+			args = []string{"--print=" + prompt, "--dangerously-skip-permissions"}
+		} else {
+			args = []string{"--print", prompt}
 		}
-		args = append(args, prompt)
 	case AgentAider, AgentOpenCode, AgentQwen, AgentGoose, AgentAmp, AgentDroid:
 		args = extendedAgentArgs(logical, prompt, unrestricted)
 	default:
@@ -511,11 +514,13 @@ func councilPingArgs(logical AgentName, prompt string, copilotSubstituteModel st
 		}
 		args = append(args, "-p", prompt)
 	case AgentAntigravity:
-		args = []string{"--print"}
+		// Same --print= binding as councilSpawnArgs; bare --print would
+		// swallow --dangerously-skip-permissions as the prompt.
 		if unrestricted {
-			args = append(args, "--dangerously-skip-permissions")
+			args = []string{"--print=" + prompt, "--dangerously-skip-permissions"}
+		} else {
+			args = []string{"--print", prompt}
 		}
-		args = append(args, prompt)
 	case AgentAider, AgentOpenCode, AgentQwen, AgentGoose, AgentAmp, AgentDroid:
 		args = extendedAgentArgs(logical, prompt, unrestricted)
 	default:
@@ -750,6 +755,9 @@ func runAgent(ctx context.Context, name AgentName, resolved, copilotResolved *Re
 	attempt := 0
 	isFallback := false
 	started := time.Now()
+	modelOverride := getModelOverride(name, cfg)
+	codexUpgradeAttempted := false
+	codexModelFallbackAttempted := false
 
 	for attempt < totalAttempts || (!isFallback && hasCopilot) {
 		attempt++
@@ -769,8 +777,7 @@ func runAgent(ctx context.Context, name AgentName, resolved, copilotResolved *Re
 			args = councilSpawnArgs(name, prompt, model, "", cfg.Unrestricted)
 			isFallback = true // ensure logging reflects fallback state
 		} else {
-			override := getModelOverride(name, cfg)
-			args = councilSpawnArgs(name, prompt, "", override, cfg.Unrestricted)
+			args = councilSpawnArgs(name, prompt, "", modelOverride, cfg.Unrestricted)
 		}
 
 		stdinAny := io.Reader(bytes.NewReader(nil))
@@ -808,6 +815,33 @@ func runAgent(ctx context.Context, name AgentName, resolved, copilotResolved *Re
 				IsFallback: isFallback,
 				Attempts:   attempt,
 				Duration:   time.Since(started),
+			}
+		}
+
+		// Codex: model pinned in ~/.codex/config.toml can require a newer CLI.
+		// Upgrade once, then fall back to a compatible model before generic retries.
+		if name == AgentCodex && !isFallback {
+			if data, err := os.ReadFile(outFile); err == nil && isCLIVersionMismatch(string(data)) {
+				if !codexUpgradeAttempted {
+					codexUpgradeAttempted = true
+					log.LogAgent("HEAL", "Codex model requires newer CLI — upgrading and retrying", string(name), attempt)
+					if upgradeAgentCLIFn(ctx, name, resolved, log) {
+						attempt-- // spent this attempt on diagnosis; retry after upgrade
+						continue
+					}
+				}
+				if !codexModelFallbackAttempted {
+					codexModelFallbackAttempted = true
+					fallback := codexCompatibleFallbackModel()
+					if fallback != "" && fallback != modelOverride {
+						fmt.Printf("🔄 Codex still incompatible — falling back to model %s...\n", fallback)
+						flush()
+						log.LogAgent("HEAL", fmt.Sprintf("Codex falling back to model %s", fallback), string(name), attempt)
+						modelOverride = fallback
+						attempt--
+						continue
+					}
+				}
 			}
 		}
 

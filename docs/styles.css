@@ -1,0 +1,276 @@
+:root {
+  --bg: #0b1210;
+  --bg-2: #121c18;
+  --ink: #e8f0ea;
+  --muted: #8fa397;
+  --line: rgba(232, 240, 234, 0.12);
+  --accent: #d4a017;
+  --mint: #3ecf8e;
+  --danger: #ff7a59;
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Outfit", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --max: 1120px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--ink);
+  background:
+    radial-gradient(1200px 700px at 80% -10%, rgba(212, 160, 23, 0.18), transparent 55%),
+    radial-gradient(900px 600px at -10% 20%, rgba(62, 207, 142, 0.12), transparent 50%),
+    linear-gradient(180deg, var(--bg) 0%, #070c0a 100%);
+  min-height: 100vh;
+  line-height: 1.55;
+}
+
+a { color: var(--mint); text-underline-offset: 0.18em; }
+a:hover { color: #7ff0b5; }
+code, pre { font-family: var(--font-mono); }
+
+.skip {
+  position: absolute;
+  left: -999px;
+  top: 0;
+  background: var(--accent);
+  color: #111;
+  padding: 0.5rem 1rem;
+  z-index: 100;
+}
+.skip:focus { left: 1rem; top: 1rem; }
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 1.25rem 1.5rem;
+}
+.brand {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.35rem;
+  color: var(--ink);
+  text-decoration: none;
+  letter-spacing: -0.02em;
+}
+.top nav {
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+.top nav a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+.top nav a:hover { color: var(--ink); }
+
+.hero {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 2.5rem;
+  align-items: end;
+  min-height: calc(100vh - 5rem);
+}
+.brand-mark {
+  font-family: var(--font-display);
+  font-size: clamp(3.2rem, 8vw, 5.5rem);
+  font-weight: 700;
+  line-height: 0.95;
+  margin: 0 0 1rem;
+  letter-spacing: -0.03em;
+  background: linear-gradient(120deg, #fff6d8 10%, var(--accent) 45%, var(--mint) 95%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hero h1 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(1.55rem, 3.2vw, 2.15rem);
+  line-height: 1.2;
+  margin: 0 0 1rem;
+  max-width: 18ch;
+  color: var(--ink);
+}
+.lede {
+  margin: 0 0 1.75rem;
+  color: var(--muted);
+  font-size: 1.08rem;
+  max-width: 38ch;
+}
+.cta { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.85rem 1.25rem;
+  border-radius: 999px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+.btn:hover { transform: translateY(-2px); }
+.btn.primary {
+  background: var(--accent);
+  color: #1a1200;
+}
+.btn.primary:hover { background: #efb82a; color: #1a1200; }
+.btn.ghost {
+  border: 1px solid var(--line);
+  color: var(--ink);
+  background: rgba(255,255,255,0.03);
+}
+
+.hero-stage {
+  position: relative;
+  min-height: 280px;
+}
+.terminal {
+  margin: 0;
+  padding: 1.4rem 1.35rem;
+  border: 1px solid var(--line);
+  border-radius: 14px 14px 4px 14px;
+  background:
+    linear-gradient(160deg, rgba(18, 28, 24, 0.95), rgba(8, 12, 10, 0.98));
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+  font-size: 0.82rem;
+  line-height: 1.65;
+  overflow: auto;
+  animation: rise 0.9s ease both;
+}
+.terminal .dim { color: var(--muted); }
+.terminal .ok { color: var(--mint); }
+.terminal .warn { color: var(--accent); }
+.terminal .phase { color: #c9b27a; }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+
+.band {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 3.5rem 1.5rem;
+  border-top: 1px solid var(--line);
+}
+.band h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 3vw, 2.2rem);
+  margin: 0 0 0.75rem;
+  letter-spacing: -0.02em;
+}
+.section-lede {
+  color: var(--muted);
+  max-width: 52ch;
+  margin: 0 0 1.75rem;
+}
+.steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 1rem;
+}
+.steps li {
+  padding: 1rem 0 1rem 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+}
+.steps strong { color: var(--ink); font-weight: 600; }
+
+.agent-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 1.25rem;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
+}
+.agent-list li::before {
+  content: "▸ ";
+  color: var(--accent);
+}
+
+.install-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.install-grid figure {
+  margin: 0;
+}
+.install-grid figcaption {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 0.4rem;
+}
+.install-grid pre,
+.follow {
+  margin: 0;
+  padding: 1rem;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: auto;
+  font-size: 0.82rem;
+}
+.follow { margin-top: 1rem; }
+.fine { color: var(--muted); font-size: 0.95rem; }
+
+.faq dl {
+  margin: 0;
+  display: grid;
+  gap: 1.25rem;
+}
+.faq dt {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  margin-bottom: 0.35rem;
+}
+.faq dd {
+  margin: 0;
+  color: var(--muted);
+  max-width: 62ch;
+}
+
+.foot {
+  border-top: 1px solid var(--line);
+  padding: 2rem 1.5rem 3rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+.foot strong { color: var(--ink); }
+
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: 1fr;
+    min-height: auto;
+    padding-top: 1rem;
+  }
+  .hero h1 { max-width: none; }
+  .install-grid { grid-template-columns: 1fr; }
+  .brand-mark { font-size: clamp(2.8rem, 14vw, 4rem); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terminal { animation: none; }
+  .btn:hover { transform: none; }
+  html { scroll-behavior: auto; }
+}

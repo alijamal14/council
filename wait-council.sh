@@ -7,12 +7,12 @@
 #   2 — council timed out (check council_runs/ — results may still be on disk)
 #
 # Usage:
-#   ./wait-council.sh "your task"
-#   ./wait-council.sh --continue council_runs/run_<dir> "feedback"
+#   ./tools/council/wait-council.sh "your task"
+#   ./tools/council/wait-council.sh --continue council_runs/run_<dir> "feedback"
 #
 # Timeout:
 #   Default: 1200s (3 agents × 3 attempts × 180s + critique phase overhead)
-#   Override: COUNCIL_TIMEOUT=600 ./wait-council.sh "task"
+#   Override: COUNCIL_TIMEOUT=600 ./tools/council/wait-council.sh "task"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BINARY="$SCRIPT_DIR/council"

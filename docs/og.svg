@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="AI Council">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b1210"/>
+      <stop offset="55%" stop-color="#121c18"/>
+      <stop offset="100%" stop-color="#1a1408"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#g)"/>
+  <circle cx="980" cy="80" r="220" fill="#d4a017" opacity="0.16"/>
+  <circle cx="80" cy="520" r="180" fill="#3ecf8e" opacity="0.12"/>
+  <text x="80" y="250" font-family="Georgia, serif" font-size="96" font-weight="700" fill="#e8f0ea">Council</text>
+  <text x="80" y="330" font-family="Segoe UI, sans-serif" font-size="36" fill="#8fa397">Multi-agent consensus CLI · local · free · no API keys</text>
+  <text x="80" y="520" font-family="Consolas, monospace" font-size="28" fill="#3ecf8e">claude · gemini · codex · copilot · cursor · &</text>
+</svg>
