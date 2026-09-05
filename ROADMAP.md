@@ -39,7 +39,7 @@ Concepts marked *(inspired by)* borrow proven designs from other open-source mul
 
 ## Delivered
 
-- **Unreleased (feat/anonymous-ranking-synthesis)** — anonymized Phase 2 `FINAL RANKING`, Phase 3 chairman `synthesis.txt`, `rankings.json` Borda aggregate, `COUNCIL_SYNTHESIS` / `COUNCIL_CHAIRMAN`.
+- **v1.6.0** — anonymized Phase 2 `FINAL RANKING`, Phase 3 chairman `synthesis.txt`, `rankings.json`, `COUNCIL_SYNTHESIS` / `COUNCIL_CHAIRMAN`, Windows file-backed long prompts, living `docs/COMPETITIVE_ANALYSIS.md`.
 - **v1.5.0** — Codex mid-run CLI heal (upgrade + newest-binary refresh), Antigravity `--print=<prompt>` unrestricted fix, version-mismatch validation, public site at https://ali.mk313.com/council/ (SEO/AEO + animated demo).
 - **Post-v1.4 heal (workspace)** — Antigravity unrestricted argv uses `--print=<prompt>`; Codex mid-run CLI upgrade + newest-binary refresh when the configured model needs a newer Codex; trailing version-mismatch API errors invalidate long banner outputs.
 - **v1.3.0** — one-command roster install for all 12 agents incl. vendor scripts & Windows (`setup --apply [--free]`), guided sign-in (`council login`), persistent settings (`council config`), model visibility + easy switching + post-run overkill/underkill advisor (`council models`), agent updater with self-release check (`council update`), opt-in daily background auto-update, failing-agent quarantine with auto re-enable, per-agent timings and ANSI-colored output.

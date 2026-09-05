@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AI Council — Multi-agent consensus CLI for Claude, Gemini, Codex &amp; more</title>
-  <meta name="description" content="AI Council is a free open-source CLI that runs Claude Code, Gemini, Codex, Copilot, Cursor, and other AI coding agents in parallel on one task — plans, critiques, Devil’s Advocate, full audit trail. No API keys. macOS, Linux, Windows.">
+  <meta name="description" content="AI Council is a free open-source CLI that runs Claude Code, Gemini, Codex, Copilot, Cursor, and other AI coding agents in parallel — plans, anonymous rankings, Devil’s Advocate, chairman synthesis, full audit trail. No API keys. macOS, Linux, Windows.">
   <meta name="keywords" content="AI Council, multi-agent CLI, Claude Code, Gemini CLI, OpenAI Codex, GitHub Copilot, Cursor agent, AI consensus, code review agents">
   <meta name="author" content="Ali Jamal">
   <meta name="robots" content="index,follow,max-image-preview:large">
@@ -58,7 +58,7 @@
         "name": "AI Council",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "macOS, Linux, Windows",
-        "softwareVersion": "1.5.0",
+        "softwareVersion": "1.6.0",
         "offers": {
           "@type": "Offer",
           "price": "0",
@@ -68,13 +68,15 @@
         "url": "https://ali.mk313.com/council/",
         "downloadUrl": "https://github.com/alijamal14/council/releases/latest",
         "codeRepository": "https://github.com/alijamal14/council",
-        "description": "Free open-source CLI that runs multiple AI coding agent CLIs in parallel on one task, collects plans, runs critiques with a Devil's Advocate, and saves an audit trail. No API keys collected.",
+        "description": "Free open-source CLI that runs multiple AI coding agent CLIs in parallel on one task, collects plans, anonymized peer rankings, Devil's Advocate critique, chairman synthesis, and an audit trail. No API keys collected.",
         "featureList": [
           "Parallel multi-agent planning",
-          "Critique pass with Devil's Advocate",
+          "Anonymous FINAL RANKING critique pass",
+          "Chairman synthesis.txt consensus",
+          "Devil's Advocate risk pass",
           "Works with Claude, Gemini, Codex, Copilot, Cursor, Antigravity, and more",
           "Local orchestration — no hosted API keys",
-          "Auditable plan and critique artifacts"
+          "Auditable plan, ranking, and synthesis artifacts"
         ]
       },
       {
@@ -118,7 +120,7 @@
             "name": "Where do Council results go?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Each session writes to council_runs/run_<timestamp>/ with plan.<agent>.txt, critique.<agent>.txt, label_map.json, brief.txt, and audit.jsonl for a durable audit trail."
+              "text": "Each session writes to council_runs/run_<timestamp>/ with plan.<agent>.txt, critique.<agent>.txt (FINAL RANKING), label_map.json, rankings.json, synthesis.txt, brief.txt, and audit.jsonl for a durable audit trail."
             }
           }
         ]
@@ -146,7 +148,7 @@
       <div class="hero-copy">
         <p class="brand-mark">Council</p>
         <h1 id="hero-title">Second opinions from every AI CLI you already trust.</h1>
-        <p class="lede">One command runs Claude, Gemini, Codex, Copilot, Cursor, and more in parallel — plans, cross-critique, Devil’s Advocate, full audit trail. Local. Free. No API keys.</p>
+        <p class="lede">One command runs Claude, Gemini, Codex, Copilot, Cursor, and more in parallel — plans, anonymous ranking, Devil’s Advocate, chairman synthesis, full audit trail. Local. Free. No API keys.</p>
         <div class="cta">
           <a class="btn primary" href="#install">Install Council</a>
           <a class="btn ghost" href="https://github.com/alijamal14/council" rel="noopener">View source</a>
@@ -169,7 +171,8 @@
             <span data-step="cmd">run</span>
             <span data-step="ping">discover</span>
             <span data-step="plan">plan</span>
-            <span data-step="critique">critique</span>
+            <span data-step="critique">rank</span>
+            <span data-step="synth">synth</span>
             <span data-step="done">audit</span>
           </div>
         </div>
@@ -178,7 +181,14 @@
 
     <section id="how" class="band">
       <h2>What Council does</h2>
-      <p class="section-lede">Discover agents on your PATH, run them concurrently on one task, collect independent plans, then challenge the result with a critique pass — including a rotating Devil’s Advocate.</p>
+      <p class="section-lede">Discover agents on your PATH, run them concurrently on one task, collect independent plans, anonymized peer ranking with a Devil’s Advocate, then chairman synthesis — all audited under <code>council_runs/</code>.</p>
+      <ol class="steps">
+        <li><strong>Discover</strong> installed agent CLIs and ping them.</li>
+        <li><strong>Plan</strong> in parallel — one independent plan per agent.</li>
+        <li><strong>Rank &amp; critique</strong> with letter labels and <code>FINAL RANKING:</code>, plus a rotating Devil’s Advocate.</li>
+        <li><strong>Synthesize</strong> a chairman <code>synthesis.txt</code> when two or more plans succeed.</li>
+        <li><strong>Audit</strong> everything under <code>council_runs/</code> for humans and other agents.</li>
+      </ol>
       <ol class="steps">
         <li><strong>Discover</strong> installed AI CLIs and skip the rest.</li>
         <li><strong>Plan</strong> in parallel — each agent writes its own plan artifact.</li>
@@ -188,14 +198,15 @@
     </section>
 
     <section id="whats-new" class="band">
-      <h2>What’s new in v1.5.0</h2>
-      <p class="section-lede">Reliability and a public home for Council.</p>
+      <h2>What’s new in v1.6.0</h2>
+      <p class="section-lede">Anonymous ranking, chairman synthesis, and a living competitor matrix.</p>
       <ul class="agent-list whats-new-list">
-        <li>Codex mid-run heal when the CLI is too old for the configured model</li>
-        <li>Antigravity unrestricted <code>--print=&lt;prompt&gt;</code> fix</li>
-        <li>This site — SEO/AEO docs plus the animated session demo above</li>
+        <li>Phase 2 requires <code>FINAL RANKING:</code> on anonymized plan labels</li>
+        <li>Phase 3 chairman writes <code>synthesis.txt</code> (+ <code>rankings.json</code>)</li>
+        <li>Windows file-backed long prompts (CreateProcess length safe)</li>
+        <li>Living <a href="https://github.com/alijamal14/council/blob/main/docs/COMPETITIVE_ANALYSIS.md">competitive analysis</a> refreshed each release</li>
       </ul>
-      <p class="fine"><a href="https://github.com/alijamal14/council/releases/tag/v1.5.0">Release notes</a> · <a href="https://github.com/alijamal14/council/blob/main/CHANGELOG.md">CHANGELOG</a></p>
+      <p class="fine"><a href="https://github.com/alijamal14/council/releases/tag/v1.6.0">Release notes</a> · <a href="https://github.com/alijamal14/council/blob/main/CHANGELOG.md">CHANGELOG</a></p>
     </section>
 
     <section class="band agents" aria-labelledby="agents-title">
@@ -252,7 +263,7 @@ council "Design a migration plan for the auth service."</code></pre>
         </div>
         <div>
           <dt>Where do Council results go?</dt>
-          <dd>Each session writes <code>plan.*.txt</code>, <code>critique.*.txt</code>, <code>label_map.json</code>, and <code>audit.jsonl</code> under <code>council_runs/run_&lt;timestamp&gt;/</code>.</dd>
+          <dd>Each session writes <code>plan.*.txt</code>, <code>critique.*.txt</code> (with <code>FINAL RANKING:</code>), <code>label_map.json</code>, <code>rankings.json</code>, <code>synthesis.txt</code>, and <code>audit.jsonl</code> under <code>council_runs/run_&lt;timestamp&gt;/</code>.</dd>
         </div>
       </dl>
     </section>

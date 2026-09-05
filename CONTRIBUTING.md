@@ -29,6 +29,7 @@ go test ./...
     *   **Core Logic**: Ensure changes to `council.go` or `run.go` maintain backward compatibility for existing session formats.
 3. **Add Tests**: All new features or agent integrations must include corresponding tests in `*_test.go`.
 4. **Submit PR**: Provide a clear description of the problem solved and include any relevant logs from a `council doctor` check.
+5. **After release / material ship**: refresh [docs/COMPETITIVE_ANALYSIS.md](docs/COMPETITIVE_ANALYSIS.md) with latest competitor releases and commits (commands in that file). Do not skip this — competitors move.
 
 ---
 

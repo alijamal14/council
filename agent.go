@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -748,6 +749,46 @@ func runAgentsParallel(ctx context.Context, agents AgentSet, prompt, dir, prefix
 	return runAgentsParallelWithDevil(ctx, agents, prompt, "", "", dir, prefix, cfg, log)
 }
 
+// promptArgvBudget is the soft max for embedding the full prompt in argv.
+// Windows CreateProcess limits the command line to ~8191 characters; keep
+// headroom for binary path + flags. Non-Windows uses a larger soft cap.
+func promptArgvBudget() int {
+	if runtime.GOOS == "windows" {
+		return 3500
+	}
+	return 12000
+}
+
+// maybeFileBackedPrompt writes oversized prompts next to the output artifact and
+// returns a short argv-safe instruction that points the agent at that file.
+func maybeFileBackedPrompt(prompt, outFile string) string {
+	if len(prompt) <= promptArgvBudget() {
+		return prompt
+	}
+	dir := filepath.Dir(outFile)
+	base := strings.TrimSuffix(filepath.Base(outFile), filepath.Ext(outFile))
+	promptPath := filepath.Join(dir, base+".prompt.txt")
+	if err := os.WriteFile(promptPath, []byte(prompt), 0644); err != nil {
+		// Fall back to truncated inline prompt rather than failing the spawn.
+		limit := promptArgvBudget() - 200
+		if limit < 500 {
+			limit = 500
+		}
+		if len(prompt) > limit {
+			return prompt[:limit] + "\n... [prompt truncated — file write failed]\nTEXT-ONLY OUTPUT ONLY."
+		}
+		return prompt
+	}
+	abs, err := filepath.Abs(promptPath)
+	if err != nil {
+		abs = promptPath
+	}
+	return fmt.Sprintf(
+		"ROLE: Read the complete instructions in this local file (absolute path), then produce the required TEXT-ONLY response. Do not ask the user to paste content.\nFILE: %s\nTEXT-ONLY OUTPUT ONLY.",
+		abs,
+	)
+}
+
 // runAgent runs a single agent with retry and fallback logic
 func runAgent(ctx context.Context, name AgentName, resolved, copilotResolved *ResolvedAgent, prompt, outFile string, cfg Config, log *AuditLogger, hasCopilot bool) RunResult {
 	maxRetries := 3
@@ -758,6 +799,10 @@ func runAgent(ctx context.Context, name AgentName, resolved, copilotResolved *Re
 	modelOverride := getModelOverride(name, cfg)
 	codexUpgradeAttempted := false
 	codexModelFallbackAttempted := false
+	spawnPrompt := maybeFileBackedPrompt(prompt, outFile)
+	if spawnPrompt != prompt {
+		log.LogAgent("PROMPT_FILE", fmt.Sprintf("%s prompt externalized (%d bytes → file)", name, len(prompt)), string(name), 0)
+	}
 
 	for attempt < totalAttempts || (!isFallback && hasCopilot) {
 		attempt++
@@ -774,10 +819,10 @@ func runAgent(ctx context.Context, name AgentName, resolved, copilotResolved *Re
 			if copilotResolved != nil {
 				execPath = copilotResolved.Path
 			}
-			args = councilSpawnArgs(name, prompt, model, "", cfg.Unrestricted)
+			args = councilSpawnArgs(name, spawnPrompt, model, "", cfg.Unrestricted)
 			isFallback = true // ensure logging reflects fallback state
 		} else {
-			args = councilSpawnArgs(name, prompt, "", modelOverride, cfg.Unrestricted)
+			args = councilSpawnArgs(name, spawnPrompt, "", modelOverride, cfg.Unrestricted)
 		}
 
 		stdinAny := io.Reader(bytes.NewReader(nil))

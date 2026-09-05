@@ -562,3 +562,37 @@ func TestDiscoverAgentSilentBinaryReturnsNil(t *testing.T) {
 		t.Fatalf("discoverAgent() = %+v, want nil for silent binary", result)
 	}
 }
+
+func TestMaybeFileBackedPrompt(t *testing.T) {
+	dir := t.TempDir()
+	out := filepath.Join(dir, "synthesis.txt")
+	short := "short prompt"
+	if got := maybeFileBackedPrompt(short, out); got != short {
+		t.Fatalf("short prompt should stay inline, got %q", got)
+	}
+	long := strings.Repeat("x", promptArgvBudget()+100)
+	got := maybeFileBackedPrompt(long, out)
+	if got == long {
+		t.Fatal("long prompt should be externalized")
+	}
+	if !strings.Contains(got, "FILE:") {
+		t.Fatalf("expected FILE pointer, got %q", got)
+	}
+	promptFile := filepath.Join(dir, "synthesis.prompt.txt")
+	data, err := os.ReadFile(promptFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != long {
+		t.Fatal("prompt file content mismatch")
+	}
+}
+
+func TestCommandLineTooLongInvalid(t *testing.T) {
+	dir := t.TempDir()
+	f := filepath.Join(dir, "out.txt")
+	os.WriteFile(f, []byte("The command line is too long.\nPlease paste the plans you want reviewed."), 0644)
+	if isValidOutput(f) {
+		t.Fatal("command-line-too-long output must be invalid")
+	}
+}
