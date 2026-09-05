@@ -40,6 +40,7 @@ Concepts marked *(inspired by)* borrow proven designs from other open-source mul
 
 ## Delivered
 
+- **v1.5.0** — Codex mid-run CLI heal (upgrade + newest-binary refresh), Antigravity `--print=<prompt>` unrestricted fix, version-mismatch validation, public site at https://ali.mk313.com/council/ (SEO/AEO + animated demo).
 - **Post-v1.4 heal (workspace)** — Antigravity unrestricted argv uses `--print=<prompt>`; Codex mid-run CLI upgrade + newest-binary refresh when the configured model needs a newer Codex; trailing version-mismatch API errors invalidate long banner outputs.
 - **v1.3.0** — one-command roster install for all 12 agents incl. vendor scripts & Windows (`setup --apply [--free]`), guided sign-in (`council login`), persistent settings (`council config`), model visibility + easy switching + post-run overkill/underkill advisor (`council models`), agent updater with self-release check (`council update`), opt-in daily background auto-update, failing-agent quarantine with auto re-enable, per-agent timings and ANSI-colored output.
 - **v1.2.x** — 12-agent roster, `doctor --json` machine-readable inventory with auth + limits insight, `setup` installer, `COUNCIL_CONTEXT_CMD` RAG hook, validator fixes from live benchmarking.

@@ -16,6 +16,7 @@ Key facts:
 - Results: written to `council_runs/run_<timestamp>/` as `plan.<agent>.txt`, `critique.<agent>.txt`, `label_map.json`, `brief.txt`, and `audit.jsonl`.
 - Exit codes: 0 = all agents succeeded, 1 = partial success, 2 = failure.
 - If you are an AI agent invoking Council: run it in the background (sessions take minutes and shell tools buffer output), then poll the newest `council_runs/run_*/` directory for result files.
+- Latest release: v1.5.0 (Codex mid-run heal, Antigravity --print= fix, public site + animated demo).
 - License: Apache 2.0. No telemetry, no hosted service, no credential storage.
 
 ## Documentation

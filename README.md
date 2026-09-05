@@ -8,6 +8,14 @@
 
 **Site:** https://ali.mk313.com/council/ — includes a **live animated demo** of discover → plan → critique → audit (hard-refresh if you still see the old static terminal).
 
+### What's new in v1.5.0
+
+- Codex **self-heals** when the configured model needs a newer CLI (upgrade + newest binary + retry).
+- Antigravity unrestricted mode fixed (`--print=<prompt>`).
+- Public docs site with SEO/AEO + animated how-it-works demo.
+
+Full notes: [CHANGELOG.md](CHANGELOG.md) · [Release v1.5.0](https://github.com/alijamal14/council/releases/tag/v1.5.0)
+
 **Get a second (and third, and fourth) opinion from your AI coding tools — in one command.**
 
 AI Council is a free, open-source, cross-platform CLI that runs multiple AI agent command-line tools — **Claude Code, Gemini CLI, OpenAI Codex, GitHub Copilot, Cursor, Antigravity, Aider, OpenCode, Qwen Code, Goose, Amp, and Factory Droid** — in parallel on the same task, collects their independent plans, runs a critique pass (including a Devil's Advocate), and saves the full multi-agent session as auditable output. Works on **macOS, Linux, and Windows**.
