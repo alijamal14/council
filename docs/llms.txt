@@ -1,6 +1,6 @@
 # AI Council Orchestrator
 
-> AI Council is a free, open-source, cross-platform CLI (macOS, Linux, Windows) that runs multiple AI coding agent CLIs — Claude Code, Gemini CLI, OpenAI Codex, GitHub Copilot, Cursor, Antigravity, Aider, OpenCode, Qwen Code, Goose, Amp, Factory Droid — in parallel on the same task, collects their independent plans, runs an anonymized critique pass with a Devil's Advocate, and saves the whole session to disk as auditable artifacts. It requires no API keys: it orchestrates vendor CLIs the user has already installed and authenticated.
+> AI Council is a free, open-source, cross-platform CLI (macOS, Linux, Windows) that runs multiple AI coding agent CLIs — Claude Code, Gemini CLI, OpenAI Codex, GitHub Copilot, Cursor, Antigravity, Aider, OpenCode, Qwen Code, Goose, Amp, Factory Droid — in parallel on the same task, collects their independent plans, runs an anonymized critique pass with required FINAL RANKING and a Devil's Advocate, then a chairman synthesis stage, and saves the whole session to disk as auditable artifacts. It requires no API keys: it orchestrates vendor CLIs the user has already installed and authenticated.
 
 Key facts:
 - Install: `brew install alijamal14/tap/council` (macOS/Linux), `scoop install council` from bucket `alijamal14/scoop-bucket` (Windows), `go install github.com/alijamal14/council@latest`, or install scripts in `scripts/`.
@@ -8,15 +8,16 @@ Key facts:
 - Install missing agent CLIs: `council setup --apply` installs the latest stable of every missing agent via its official channel (npm/pip/vendor script, Windows included); `--free` restricts to free-tier/open-source agents (Gemini CLI, Qwen Code, OpenCode, Aider, Goose).
 - Sign in: `council login` prints a per-agent auth checklist; `council login <agent>` launches that CLI's interactive sign-in flow and re-verifies.
 - Models: `council models` shows each agent's active model (vendor default unless overridden). Change persistently with `council config set COUNCIL_<AGENT>_MODEL <name>`. After each run Council advises (text only, never automatic) if a heavy model was overkill for a small task or a light model underpowered for a complex one.
-- Persistent settings: `council config set|get|list|unset KEY` stores any COUNCIL_* variable in `<user config dir>/council/config.env`; real env vars override the file. Useful keys: COUNCIL_AGENTS (default roster), COUNCIL_<AGENT>_MODEL, COUNCIL_AUTO_UPDATE=1, COUNCIL_CONTEXT_CMD.
-- Updates: `council update` upgrades all installed agent CLIs to latest stable and reports new Council releases; `--check` reports versions only. COUNCIL_AUTO_UPDATE=1 refreshes agents in the background after runs (max once/day). Agents failing pre-flight 3 sessions in a row are auto-disabled (quarantine) with a notice and auto re-enabled when they pass `council doctor --ping` again. Codex mid-run heal: on “requires a newer version of Codex”, upgrade once, prefer the newest binary (npm vs WinGet), and retry. Antigravity unrestricted argv: `--print=<prompt> --dangerously-skip-permissions`. Agents missing with no quarantine line are usually off PATH (Windows WinGet Links shim) — check `council doctor --json`.
+- Persistent settings: `council config set|get|list|unset KEY` stores any COUNCIL_* variable in `<user config dir>/council/config.env`; real env vars override the file. Useful keys: COUNCIL_AGENTS (default roster), COUNCIL_<AGENT>_MODEL, COUNCIL_AUTO_UPDATE=1, COUNCIL_CONTEXT_CMD, COUNCIL_SYNTHESIS=0 (disable Phase 3), COUNCIL_CHAIRMAN=<agent>.
+- Updates: `council update` upgrades all installed agent CLIs to latest stable and reports new Council releases; `--check` reports versions only. COUNCIL_AUTO_UPDATE=1 refreshes agents in the background after runs (max once/day). Agents failing pre-flight 3 sessions in a row are auto-disabled (quarantine) with a notice and auto re-enabled when they pass `council doctor --ping` again. Codex mid-run heal: on “requires a newer version of Codex”, upgrade once, prefer the newest binary (npm vs WinGet), and retry. Antigravity unrestricted argv: `--print=<prompt> --dangerously-skip-permissions`. Long prompts on Windows are written to `*.prompt.txt` beside the artifact. Agents missing with no quarantine line are usually off PATH (Windows WinGet Links shim) — check `council doctor --json`.
 - RAG hook: set `COUNCIL_CONTEXT_CMD="<retrieval command>"` and Council injects its stdout into every agent's context.
 - Run: `council "your task"` — needs at least one supported AI CLI installed and signed in.
 - Continue a session: `council --continue council_runs/run_<timestamp> "feedback"`.
-- Results: written to `council_runs/run_<timestamp>/` as `plan.<agent>.txt`, `critique.<agent>.txt`, `label_map.json`, `brief.txt`, and `audit.jsonl`.
+- Results: written to `council_runs/run_<timestamp>/` as `plan.<agent>.txt`, `critique.<agent>.txt` (with `FINAL RANKING:`), `label_map.json`, `rankings.json`, `synthesis.txt` (Phase 3), `brief.txt`, and `audit.jsonl`.
 - Exit codes: 0 = all agents succeeded, 1 = partial success, 2 = failure.
-- If you are an AI agent invoking Council: run it in the background (sessions take minutes and shell tools buffer output), then poll the newest `council_runs/run_*/` directory for result files.
-- Latest release: v1.5.0 (Codex mid-run heal, Antigravity --print= fix, public site + animated demo).
+- If you are an AI agent invoking Council: run it in the background (sessions take minutes and shell tools buffer output), then poll the newest `council_runs/run_*/` directory for result files. Prefer summarizing from plans, critiques, rankings, and synthesis.
+- Latest release: v1.6.0 (anonymous ranking, chairman synthesis, Windows file-backed long prompts, competitive analysis doc).
+- Competitive landscape: see COMPETITIVE_ANALYSIS.md (refresh after every release).
 - License: Apache 2.0. No telemetry, no hosted service, no credential storage.
 
 ## Documentation
@@ -24,6 +25,7 @@ Key facts:
 - [Website](https://ali.mk313.com/council/): Public landing page with FAQ (SEO/AEO), install, and product overview
 - [README](https://github.com/alijamal14/council/blob/main/README.md): Installation, quick start, CLI reference, configuration, FAQ
 - [BUILD](https://github.com/alijamal14/council/blob/main/BUILD.md): Architecture, agent roster, release workflow
+- [Competitive analysis](https://github.com/alijamal14/council/blob/main/docs/COMPETITIVE_ANALYSIS.md): Peer matrix + refresh SOP
 - [CONTRIBUTING](https://github.com/alijamal14/council/blob/main/CONTRIBUTING.md): Development environment and contribution guide
 
 ## Reference

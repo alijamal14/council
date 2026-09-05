@@ -310,7 +310,9 @@ func collectCritiqueBodies(dir string) string {
 		}
 	}
 	sort.Strings(names)
-	var b strings.Builder
+	const maxCritiquesLen = 5000
+	var bodies []string
+	total := 0
 	for _, name := range names {
 		path := filepath.Join(dir, name)
 		if !isValidOutput(path) {
@@ -320,8 +322,21 @@ func collectCritiqueBodies(dir string) string {
 		if err != nil {
 			continue
 		}
+		bodies = append(bodies, name+"\x00"+string(data))
+		total += len(data)
+	}
+	var b strings.Builder
+	for _, item := range bodies {
+		parts := strings.SplitN(item, "\x00", 2)
+		name, content := parts[0], parts[1]
+		if total > maxCritiquesLen && len(bodies) > 0 {
+			limit := maxCritiquesLen / len(bodies)
+			if len(content) > limit {
+				content = content[:limit] + "\n... [Critique truncated for synthesis prompt size]"
+			}
+		}
 		agent := strings.TrimSuffix(strings.TrimPrefix(name, "critique."), ".txt")
-		b.WriteString(fmt.Sprintf("### Critique from %s:\n%s\n\n", agent, string(data)))
+		b.WriteString(fmt.Sprintf("### Critique from %s:\n%s\n\n", agent, content))
 	}
 	return b.String()
 }

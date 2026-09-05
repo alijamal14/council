@@ -8,6 +8,14 @@
 
 **Site:** https://ali.mk313.com/council/ — includes a **live animated demo** of discover → plan → critique → audit (hard-refresh if you still see the old static terminal).
 
+### What's new in v1.6.0
+
+- **Anonymous ranking + chairman synthesis** — critiques emit `FINAL RANKING:`; Phase 3 writes `synthesis.txt` (+ `rankings.json`).
+- Windows **file-backed long prompts** (fixes CreateProcess length limits on Codex).
+- Living competitor matrix: [docs/COMPETITIVE_ANALYSIS.md](docs/COMPETITIVE_ANALYSIS.md).
+
+Full notes: [CHANGELOG.md](CHANGELOG.md)
+
 ### What's new in v1.5.0
 
 - Codex **self-heals** when the configured model needs a newer CLI (upgrade + newest binary + retry).

@@ -30,6 +30,9 @@ var errorPatterns = []string{
 	"internal server error", "503 service", "502 bad gateway",
 	"authentication failed",
 	"invalid api key",
+	"command line is too long",
+	"the command line is too long",
+	"please paste the plans",
 	"[COUNCIL_AGENT_TIMEOUT]", "[COUNCIL_AGENT_FAILED]",
 }
 
