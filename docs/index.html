@@ -152,13 +152,20 @@
         </div>
       </div>
       <div class="hero-stage" aria-hidden="true">
-        <pre class="terminal"><code><span class="dim">$</span> council "Should we migrate REST to gRPC?"
-<span class="ok">✅</span> Claude · <span class="ok">✅</span> Codex · <span class="ok">✅</span> Gemini · <span class="ok">✅</span> Cursor
-<span class="phase">— Phase 1: Planning —</span>
-<span class="dim">plan.claude.txt · plan.codex.txt · plan.gemini.txt</span>
-<span class="phase">— Phase 2: Critique —</span>
-<span class="warn">🎭</span> Codex assigned Devil’s Advocate
-<span class="ok">Council adjourned</span> → council_runs/run_…/</code></pre>
+        <div class="demo" data-demo>
+          <div class="demo-chrome">
+            <span></span><span></span><span></span>
+            <em>council session</em>
+          </div>
+          <pre class="terminal" id="council-demo"><code></code></pre>
+          <div class="demo-rail" aria-hidden="true">
+            <span data-step="cmd">run</span>
+            <span data-step="ping">discover</span>
+            <span data-step="plan">plan</span>
+            <span data-step="critique">critique</span>
+            <span data-step="done">audit</span>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -236,5 +243,6 @@ council "Design a migration plan for the auth service."</code></pre>
   <footer class="foot">
     <p><strong>Council</strong> · Apache-2.0 · <a href="https://github.com/alijamal14/council" rel="noopener">GitHub</a> · <a href="https://github.com/alijamal14/council/releases/latest" rel="noopener">Releases</a> · <a href="./llms.txt">llms.txt</a></p>
   </footer>
+  <script src="demo.js" defer></script>
 </body>
 </html>

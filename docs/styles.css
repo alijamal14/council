@@ -133,11 +133,38 @@ code, pre { font-family: var(--font-mono); }
 
 .hero-stage {
   position: relative;
-  min-height: 280px;
+  min-height: 320px;
+}
+.demo {
+  display: grid;
+  gap: 0.75rem;
+}
+.demo-chrome {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 0.25rem;
+}
+.demo-chrome span {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: rgba(232, 240, 234, 0.2);
+}
+.demo-chrome span:nth-child(1) { background: #ff7a59; }
+.demo-chrome span:nth-child(2) { background: #d4a017; }
+.demo-chrome span:nth-child(3) { background: #3ecf8e; }
+.demo-chrome em {
+  margin-left: 0.55rem;
+  font-style: normal;
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-family: var(--font-mono);
 }
 .terminal {
   margin: 0;
   padding: 1.4rem 1.35rem;
+  min-height: 15.5rem;
   border: 1px solid var(--line);
   border-radius: 14px 14px 4px 14px;
   background:
@@ -147,16 +174,71 @@ code, pre { font-family: var(--font-mono); }
     inset 0 1px 0 rgba(255,255,255,0.06);
   font-size: 0.82rem;
   line-height: 1.65;
-  overflow: auto;
+  overflow: hidden;
   animation: rise 0.9s ease both;
 }
 .terminal .dim { color: var(--muted); }
 .terminal .ok { color: var(--mint); }
 .terminal .warn { color: var(--accent); }
 .terminal .phase { color: #c9b27a; }
+.terminal .writing {
+  display: inline-block;
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+.terminal .pulse {
+  display: inline-block;
+  animation: nudge 1s ease-in-out infinite;
+}
+.terminal .caret {
+  display: inline-block;
+  width: 0.55ch;
+  height: 1.05em;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  background: var(--mint);
+  animation: blink 1s step-end infinite;
+}
+.demo-rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+.demo-rail span {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid transparent;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  opacity: 0.45;
+  transition: opacity 0.35s ease, color 0.35s ease, border-color 0.35s ease, background 0.35s ease;
+}
+.demo-rail span.seen {
+  opacity: 0.85;
+  border-color: var(--line);
+}
+.demo-rail span.on {
+  opacity: 1;
+  color: #1a1200;
+  background: var(--accent);
+  border-color: var(--accent);
+}
 @keyframes rise {
   from { opacity: 0; transform: translateY(18px); }
   to { opacity: 1; transform: none; }
+}
+@keyframes blink {
+  50% { opacity: 0; }
+}
+@keyframes shimmer {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+@keyframes nudge {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
 }
 
 .band {
@@ -270,7 +352,7 @@ code, pre { font-family: var(--font-mono); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .terminal { animation: none; }
+  .terminal, .terminal .writing, .terminal .pulse, .terminal .caret { animation: none; }
   .btn:hover { transform: none; }
   html { scroll-behavior: auto; }
 }
