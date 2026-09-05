@@ -101,6 +101,20 @@ Also search: `agents-council`, `llm council skill`, `multi-agent debate CLI`.
 
 ---
 
+## Adoption roadmap (from strategy council 2026-09-05)
+
+Live council consensus (Antigravity chairman; Claude / Codex / Cursor peers): **deliberation quality is competitive; distribution is not.** Full 90-day plan lives in [ROADMAP.md — Near-term adoption plan](../ROADMAP.md#near-term-adoption-plan-90-days).
+
+Priorities in order:
+
+1. Prompt-file labeling hygiene + `status.json` + safer defaults + ranking retry
+2. MCP server + Claude Code skill wrapper (ambient invocation)
+3. Blind bench + `fast`/`deep` presets + case studies
+
+Do **not** expect v1.6.0 alone to move GitHub stars vs Karpathy or Claude skill packs.
+
+---
+
 ## Process note for maintainers / agents
 
 After **every** Council update that ships to `main` or a release tag:
