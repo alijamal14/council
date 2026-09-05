@@ -64,8 +64,9 @@ Council will:
 1. Discover available agent CLIs on your `PATH`.
 2. Run selected agents concurrently against the same task.
 3. Collect each agent's response (the **Planning** phase).
-4. Run a critique pass to identify risks, gaps, and disagreements (the **Critique** phase).
-5. Write the full session output to a timestamped run directory for review and follow-up.
+4. Run a critique pass with anonymized plan labels and a required `FINAL RANKING:` block (the **Critique** phase, plus a Devil's Advocate).
+5. When two or more plans succeed, run a **Chairman synthesis** phase that writes `synthesis.txt` (disable with `COUNCIL_SYNTHESIS=0`).
+6. Write the full session output to a timestamped run directory for review and follow-up.
 
 This makes Council useful for:
 
@@ -79,7 +80,7 @@ This makes Council useful for:
 ## Features
 
 - **Multi-agent orchestration** — run available AI CLIs concurrently from one command.
-- **Planning & Critique workflow** — collect independent plans, then challenge the result with a Devil's Advocate agent.
+- **Planning, ranked critique & synthesis** — collect independent plans, anonymized peer ranking (`FINAL RANKING:`), Devil's Advocate risks, then chairman `synthesis.txt`.
 - **Selectable roster** — choose exactly which agents participate via `--agents`.
 - **Continue mode** — resume a previous Council session with additional feedback.
 - **Restricted by default** — agents run with safer arguments unless unrestricted mode is explicitly enabled.
@@ -405,6 +406,8 @@ council config list                              # see everything (env overrides
 | `COUNCIL_UNRESTRICTED` | Set to `1` to default to unrestricted mode (equivalent to passing `--yolo` on every run) — intended for dedicated always-on runners and CI. |
 | `COUNCIL_KEEP_RUNS` | Number of newest run directories to retain. Invalid values and values below `1` fall back to `200`. |
 | `COUNCIL_NO_ROTATE` | Set to `1` to disable automatic pruning of old run directories. |
+| `COUNCIL_SYNTHESIS` | Set to `0` / `off` / `false` to skip Phase 3 chairman synthesis (default: on when ≥2 valid plans). |
+| `COUNCIL_CHAIRMAN` | Prefer this agent name as the Phase 3 synthesizer when present in the roster. |
 
 ---
 

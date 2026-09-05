@@ -2,6 +2,14 @@
 
 All notable changes to Council are documented here.
 
+## [Unreleased]
+
+### What's new
+
+- **Anonymous peer ranking** — Phase 2 critique prompts require a machine-parseable `FINAL RANKING: B > A > C` block using letter labels only (authors stay anonymized via `label_map.json`).
+- **Chairman synthesis (Phase 3)** — after critiques, one agent writes `synthesis.txt` consensus. Enabled by default when ≥2 valid plans; disable with `COUNCIL_SYNTHESIS=0`. Pick the chair with `COUNCIL_CHAIRMAN=<agent>`.
+- **`rankings.json`** — optional Borda aggregate of `FINAL RANKING` blocks across critique files.
+
 ## [1.5.0] — 2026-09-05
 
 ### What's new
