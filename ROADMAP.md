@@ -6,7 +6,6 @@ Concepts marked *(inspired by)* borrow proven designs from other open-source mul
 ## Consensus & Quality
 
 - **Structured verdicts** — ask each critique to emit a machine-readable score block (risk, confidence, recommendation) in addition to prose, so runs can be compared quantitatively across sessions.
-- **Synthesis phase** — an optional third phase where one agent merges the surviving plan and critiques into a single actionable plan *(inspired by ensemble/judge patterns in LLM-as-judge literature and tools like PR-Agent's reflect step)*.
 - **Cross-examination rounds** — let agents answer the Devil's Advocate's objections before the session closes *(inspired by multi-agent debate: Du et al. 2023, ChatEval)*.
 - **Accuracy benchmarking harness** — a `council bench` command that replays a fixed task suite (with known-good rubrics) across roster subsets and reports per-agent latency, token cost proxy, and rubric scores over time.
 
@@ -40,6 +39,7 @@ Concepts marked *(inspired by)* borrow proven designs from other open-source mul
 
 ## Delivered
 
+- **Unreleased (feat/anonymous-ranking-synthesis)** — anonymized Phase 2 `FINAL RANKING`, Phase 3 chairman `synthesis.txt`, `rankings.json` Borda aggregate, `COUNCIL_SYNTHESIS` / `COUNCIL_CHAIRMAN`.
 - **v1.5.0** — Codex mid-run CLI heal (upgrade + newest-binary refresh), Antigravity `--print=<prompt>` unrestricted fix, version-mismatch validation, public site at https://ali.mk313.com/council/ (SEO/AEO + animated demo).
 - **Post-v1.4 heal (workspace)** — Antigravity unrestricted argv uses `--print=<prompt>`; Codex mid-run CLI upgrade + newest-binary refresh when the configured model needs a newer Codex; trailing version-mismatch API errors invalidate long banner outputs.
 - **v1.3.0** — one-command roster install for all 12 agents incl. vendor scripts & Windows (`setup --apply [--free]`), guided sign-in (`council login`), persistent settings (`council config`), model visibility + easy switching + post-run overkill/underkill advisor (`council models`), agent updater with self-release check (`council update`), opt-in daily background auto-update, failing-agent quarantine with auto re-enable, per-agent timings and ANSI-colored output.

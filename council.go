@@ -760,7 +760,8 @@ func runSessionOnce(sigCtx context.Context, cfg *Config, detectedAgents AgentSet
 		mapData, _ := json.Marshal(labelMap)
 		os.WriteFile(filepath.Join(iterDir, "label_map.json"), mapData, 0644)
 
-		critiquePrompt := fmt.Sprintf("ROLE: Reviewer. PLANS:\n%s\nGOAL: Critique and recommend the best path forward. TEXT-ONLY OUTPUT ONLY.", allPlans)
+		critiquePrompt := buildCritiquePrompt(allPlans)
+		var dvAgent AgentName
 
 		if len(detectedAgents) >= 2 {
 			// Determine devil's advocate agent (rotate by run directory hash for determinism)
@@ -772,9 +773,9 @@ func runSessionOnce(sigCtx context.Context, cfg *Config, detectedAgents AgentSet
 				hash = hash*31 + uint32(runDir[i])
 			}
 			dvIdx := int(hash % uint32(len(agentList)))
-			dvAgent := agentList[dvIdx]
+			dvAgent = agentList[dvIdx]
 
-			devilPrompt := fmt.Sprintf("ROLE: Devil's Advocate. PLANS:\n%s\nGOAL: Your job is NOT to agree with the consensus. Identify the strongest objections, hidden assumptions, failure modes, and risks across ALL plans. Force-rank the risks by severity. Do not recommend a winner. TEXT-ONLY OUTPUT ONLY.", allPlans)
+			devilPrompt := buildDevilPrompt(allPlans)
 
 			fmt.Printf("🎭 Assigned %s as Devil's Advocate\n", dvAgent)
 			flush()
@@ -795,6 +796,47 @@ func runSessionOnce(sigCtx context.Context, cfg *Config, detectedAgents AgentSet
 		validCritiques := countValidFiles(iterDir, "critique.")
 		fmt.Printf("\n✅ Critique complete. Valid critiques: %d\n", validCritiques)
 		flush()
+
+		// Aggregate anonymous rankings from critiques (best-effort; empty if none).
+		if agg, err := aggregateRankings(iterDir); err == nil && len(agg.ByAgent) > 0 {
+			if err := writeRankingsJSON(iterDir, agg); err == nil {
+				fmt.Printf("📊 Rankings aggregate written (winner: Plan %s)\n", agg.Winner)
+				flush()
+			}
+		}
+
+		// Phase 3: Chairman synthesis (default on when ≥2 valid plans).
+		if synthesisEnabled(validPlans) && (validCritiques >= 1 || validPlans >= 2) {
+			fmt.Println(bold(cyan("\n--- Phase 3: Chairman Synthesis ---")))
+			flush()
+
+			chair, ok := chooseChairman(detectedAgents, labelMap, dvAgent)
+			if !ok {
+				fmt.Println("⚠️  No chairman candidate available — skipping synthesis")
+				log.Log("SKIP", "Synthesis skipped — no chairman candidate")
+			} else {
+				critiques := collectCritiqueBodies(iterDir)
+				synthPrompt := buildSynthesisPrompt(promptTask, allPlans, critiques)
+				outFile := filepath.Join(iterDir, "synthesis.txt")
+				fmt.Printf("🧑‍⚖️ Chairman: %s\n", chair)
+				flush()
+				log.Log("SYNTHESIS", fmt.Sprintf("Chairman %s synthesizing consensus", chair))
+				res := runAgent(sigCtx, chair, detectedAgents[chair], detectedAgents[AgentCopilot], synthPrompt, outFile, *cfg, log, hasCopilot)
+				results = append(results, res)
+				if isValidOutput(outFile) {
+					fmt.Println("✅ Synthesis complete → synthesis.txt")
+					flush()
+				} else {
+					fmt.Println("⚠️  Synthesis did not produce valid output")
+					log.Log("WARN", "Synthesis output invalid or empty")
+					flush()
+				}
+			}
+		} else if validPlans >= 2 {
+			fmt.Println("ℹ️  Phase 3 synthesis disabled (COUNCIL_SYNTHESIS=0)")
+			flush()
+			log.Log("SKIP", "Synthesis disabled via COUNCIL_SYNTHESIS")
+		}
 	}
 
 	fmt.Println(bold(green("\n=== Council Adjourned ===")))
