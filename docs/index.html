@@ -279,22 +279,24 @@ council "Design a migration plan for the auth service."</code></pre>
   if (!root || !code) return;
 
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const steps = ["cmd", "ping", "plan", "critique", "synth", "done"];
 
   const finalHTML = [
     `<span class="dim">$</span> council "Should we migrate REST to gRPC?"`,
     `<span class="ok">✅</span> Claude · <span class="ok">✅</span> Codex · <span class="ok">✅</span> Gemini · <span class="ok">✅</span> Cursor`,
     `<span class="phase">— Phase 1: Planning —</span>`,
     `<span class="dim">plan.claude.txt · plan.codex.txt · plan.gemini.txt · plan.cursor.txt</span>`,
-    `<span class="phase">— Phase 2: Critique —</span>`,
-    `<span class="warn">🎭</span> Codex assigned Devil’s Advocate`,
+    `<span class="phase">— Phase 2: Critique + Ranking —</span>`,
+    `<span class="warn">🎭</span> Codex Devil’s Advocate · <span class="ok">FINAL RANKING: B &gt; A &gt; C</span>`,
+    `<span class="phase">— Phase 3: Synthesis —</span>`,
+    `<span class="ok">synthesis.txt</span> · rankings.json`,
     `<span class="ok">Council adjourned</span> → council_runs/run_…/`,
   ].join("\n");
 
   const setStep = (name) => {
     root.querySelectorAll(".demo-rail span").forEach((el) => {
       el.classList.toggle("on", el.dataset.step === name);
-      if (["cmd", "ping", "plan", "critique", "done"].indexOf(el.dataset.step) <=
-          ["cmd", "ping", "plan", "critique", "done"].indexOf(name)) {
+      if (steps.indexOf(el.dataset.step) <= steps.indexOf(name)) {
         el.classList.add("seen");
       }
     });
@@ -310,7 +312,6 @@ council "Design a migration plan for the auth service."</code></pre>
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   const typeLine = async (html, charDelay = 18) => {
-    // Type plain text approximation then swap to HTML when done for that line
     const tmp = document.createElement("div");
     tmp.innerHTML = html;
     const plain = tmp.textContent || "";
@@ -352,9 +353,13 @@ council "Design a migration plan for the auth service."</code></pre>
       await appendLine(`<span class="ok">Valid plans: 4/4</span>`, 520);
 
       setStep("critique");
-      await appendLine(`<span class="phase">— Phase 2: Critique —</span>`, 400);
-      await appendLine(`<span class="warn">🎭</span> Codex assigned Devil’s Advocate`, 700);
-      await appendLine(`<span class="ok">Valid critiques: 4</span>`, 520);
+      await appendLine(`<span class="phase">— Phase 2: Critique + Ranking —</span>`, 400);
+      await appendLine(`<span class="warn">🎭</span> Codex assigned Devil’s Advocate`, 500);
+      await appendLine(`<span class="ok">FINAL RANKING: B &gt; A &gt; C</span>`, 520);
+
+      setStep("synth");
+      await appendLine(`<span class="phase">— Phase 3: Chairman Synthesis —</span>`, 400);
+      await appendLine(`<span class="ok">synthesis.txt</span> · rankings.json`, 650);
 
       setStep("done");
       await appendLine(`<span class="ok">Council adjourned</span> → council_runs/run_…/`, 2200);
