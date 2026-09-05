@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Website](https://img.shields.io/badge/website-ali.mk313.com%2Fcouncil-3ecf8e)](https://ali.mk313.com/council/)
 
-**Site:** https://ali.mk313.com/council/
+**Site:** https://ali.mk313.com/council/ — includes a **live animated demo** of discover → plan → critique → audit (hard-refresh if you still see the old static terminal).
 
 **Get a second (and third, and fourth) opinion from your AI coding tools — in one command.**
 
@@ -38,6 +38,8 @@ council "Should we migrate this service from REST to gRPC? List risks."
 ```
 
 Results land in `council_runs/run_<timestamp>/` as one plan file per agent plus critiques. You need **at least one** supported AI CLI installed and signed in — Council skips the rest automatically. `council doctor` shows what Council can see at any time.
+
+Prefer a visual walkthrough first? Open the [animated session demo](https://ali.mk313.com/council/) on the website.
 
 ---
 
